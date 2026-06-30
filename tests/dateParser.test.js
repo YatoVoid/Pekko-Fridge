@@ -61,6 +61,11 @@ eq(r.exp, 2027, 5, 20, "auto-correct impossible month");
 r = parseLabel("EXP 2024/01 28", "DMY");
 eq(r.exp, 2024, 1, 28, "year-first with space separator");
 
+// space-separated date, ED=expiry / PD=production, lot code ignored
+r = parseLabel("ED 22 07 26\nPD 23 01 26\nP T4F19551", "DMY");
+eq(r.exp, 2026, 7, 22, "ED space-separated expiry");
+eq(r.mfg, 2026, 1, 23, "PD space-separated make date");
+
 // a stray month-only token must not beat the full date in the same month
 r = parseLabel("BB 2024/01\n2024/01/28", "DMY");
 eq(r.exp, 2024, 1, 28, "full date beats month-only same month");

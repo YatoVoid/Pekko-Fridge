@@ -10,7 +10,7 @@ const MONTHS = {
 
 // Keyword groups (case-insensitive). Japanese included (Kawaii/JP-first).
 const EXP_WORDS = /(exp(?:iry|ires|iration)?|\bbbd?\b|\bbbe\b|best\s*before(?:\s*end)?|use\s*by|sell\s*by|consume\s*by|valid\s*(?:until|to)|\bed\b|expir)|賞味期限|消費期限/i;
-const MFG_WORDS = /(mfg|mfd|prod(?:uced)?|packed|\bpkd\b|manufactured?|made(?:\s*on)?)|製造|加工/i;
+const MFG_WORDS = /(mfg|mfd|\bmd\b|\bpd\b|prod(?:uced)?|packed|\bpkd\b|manufactured?|made(?:\s*on)?)|製造|加工/i;
 
 function fullYear(y) {
   const n = Number(y);
@@ -63,6 +63,11 @@ function extractDates(line, region) {
 
   const reNum = /(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/g;
   while ((m = reNum.exec(line))) push(resolveNumeric(m[1], m[2], m[3], region));
+
+  // Space-separated dates with no slashes, e.g. "ED 22 07 26" / "23 01 2026".
+  // The plausibility window later discards junk number runs (lot codes, weights).
+  const reSpaced = /(?<!\d)(\d{1,4})\s+(\d{1,2})\s+(\d{2,4})(?!\d)/g;
+  while ((m = reSpaced.exec(line))) push(resolveNumeric(m[1], m[2], m[3], region));
 
   // Year-first with loose separators (handles OCR turning "/" into a space, e.g.
   // "2024/01 28"). Year leads, so it's unambiguous and safe.

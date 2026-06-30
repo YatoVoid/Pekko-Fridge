@@ -9,6 +9,40 @@ import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
 
+// Generate plausible alternative dates by toggling a single 6↔8 digit in the
+// day / month / year — the digit pair dot-matrix OCR most often confuses.
+function swap68(date) {
+  if (!date) return [];
+  const dt = new Date(date);
+  if (Number.isNaN(dt.getTime())) return [];
+  const y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate();
+  const now = Date.now();
+  const MIN = now - 3 * 365 * 864e5;
+  const MAX = now + 8 * 365 * 864e5;
+  const toggles = (n) => {
+    const s = String(n);
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === "6" || s[i] === "8") out.push(Number(s.slice(0, i) + (s[i] === "6" ? "8" : "6") + s.slice(i + 1)));
+    }
+    return out;
+  };
+  const seen = new Set();
+  const res = [];
+  const tryDate = (yy, mm, dd) => {
+    const nd = new Date(yy, mm - 1, dd);
+    if (nd.getFullYear() === yy && nd.getMonth() === mm - 1 && nd.getDate() === dd
+      && nd.getTime() >= MIN && nd.getTime() <= MAX && !seen.has(nd.getTime())) {
+      seen.add(nd.getTime());
+      res.push(nd);
+    }
+  };
+  toggles(d).forEach((dd) => tryDate(y, m, dd));
+  toggles(m).forEach((mm) => tryDate(y, mm, d));
+  toggles(y).forEach((yy) => tryDate(yy, m, d));
+  return res;
+}
+
 export default function SaveSheet({ visible, result, palette, region, onSave, onClose }) {
   const [name, setName] = useState("");
   const [cat, setCat] = useState("other");
@@ -29,10 +63,19 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     if (uri) setPhotos((p) => [...p, uri]);
   };
 
-  // other dates we spotted on the label, so the user can correct a wrong guess
-  const candidates = (result?.candidates || []).filter(
-    (d) => !exp || new Date(d).getTime() !== new Date(exp).getTime()
-  );
+  // Correction chips: other dates spotted on the label, plus 6↔8 variants of the
+  // chosen date (dot-matrix OCR often confuses 6 and 8).
+  const candidates = React.useMemo(() => {
+    const out = new Map();
+    const add = (d) => {
+      if (!d) return;
+      const t = new Date(d).getTime();
+      if (!Number.isNaN(t) && (!exp || t !== new Date(exp).getTime())) out.set(t, new Date(t));
+    };
+    (result?.candidates || []).forEach(add);
+    swap68(exp).forEach(add);
+    return [...out.values()].sort((a, b) => a - b);
+  }, [result, exp]);
 
   return (
     <SwipeSheet visible={visible} onClose={onClose} palette={palette}>
