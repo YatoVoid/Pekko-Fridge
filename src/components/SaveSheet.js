@@ -7,17 +7,20 @@ import { CategoryIcon } from "./FoodIcons";
 import { formatDate as fmt } from "../lib/expiry";
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
+import DateField from "./DateField";
 
 export default function SaveSheet({ visible, result, palette, region, onSave, onClose }) {
   const [name, setName] = useState("");
   const [cat, setCat] = useState("other");
   const [photos, setPhotos] = useState([]);
+  const [exp, setExp] = useState(null); // chosen expiry (editable via candidate chips)
 
   useEffect(() => {
     if (visible) {
       setName(result?.guessName || "");
       setCat("other");
       setPhotos(result?.photo ? [result.photo] : []);
+      setExp(result?.exp || null);
     }
   }, [visible, result]);
 
@@ -26,24 +29,33 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     if (uri) setPhotos((p) => [...p, uri]);
   };
 
-  const exp = result?.exp;
+  // other dates we spotted on the label, so the user can correct a wrong guess
+  const candidates = (result?.candidates || []).filter(
+    (d) => !exp || new Date(d).getTime() !== new Date(exp).getTime()
+  );
 
   return (
     <SwipeSheet visible={visible} onClose={onClose} palette={palette}>
       <Text style={[s.title, { color: palette.text }]}>Got it</Text>
 
-      <View style={[s.dates, { backgroundColor: palette.surfaceAlt }]}>
-        <View style={s.dateRow}>
-          <Text style={[s.dateLabel, { color: palette.textSoft }]}>Expires</Text>
-          <Text style={[s.dateBig, { color: palette.text }]}>{fmt(exp, region)}</Text>
-        </View>
-        {result?.mfg ? (
-          <View style={s.dateRow}>
-            <Text style={[s.dateLabel, { color: palette.textSoft }]}>Made</Text>
-            <Text style={[s.dateSmall, { color: palette.textSoft }]}>{fmt(result.mfg, region)}</Text>
+      <Text style={[s.field, { color: palette.textSoft }]}>Expires</Text>
+      <DateField value={exp} onChange={setExp} palette={palette} region={region} />
+      {result?.mfg ? (
+        <Text style={[s.madeNote, { color: palette.textSoft }]}>Made {fmt(result.mfg, region)}</Text>
+      ) : null}
+
+      {candidates.length > 0 && (
+        <>
+          <Text style={[s.field, { color: palette.textSoft }]}>Wrong date? Tap the right one</Text>
+          <View style={s.cands}>
+            {candidates.map((d, i) => (
+              <Pressable key={i} onPress={() => setExp(d)} style={[s.cand, { backgroundColor: palette.surfaceAlt, borderColor: palette.line }]}>
+                <Text style={[s.candText, { color: palette.text }]}>{fmt(d, region)}</Text>
+              </Pressable>
+            ))}
           </View>
-        ) : null}
-      </View>
+        </>
+      )}
 
       <Text style={[s.field, { color: palette.textSoft }]}>Photos</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.strip}>
@@ -107,6 +119,10 @@ const s = StyleSheet.create({
   dateLabel: { fontSize: 13, fontWeight: "700" },
   dateBig: { fontSize: 22, fontWeight: "900", letterSpacing: 0.5 },
   dateSmall: { fontSize: 15, fontWeight: "600" },
+  madeNote: { fontSize: 13, fontWeight: "600", marginTop: 6 },
+  cands: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm, marginBottom: SPACE.sm, marginTop: 6 },
+  cand: { borderWidth: 1, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 9 },
+  candText: { fontSize: 14, fontWeight: "700" },
   field: { fontSize: 12, fontWeight: "800", letterSpacing: 1, marginBottom: 6, marginTop: 4 },
   strip: { gap: SPACE.sm, paddingVertical: 2 },
   photoWrap: { position: "relative" },

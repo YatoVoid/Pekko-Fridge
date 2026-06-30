@@ -10,27 +10,25 @@ import { PrimaryButton } from "../components/ui";
 import { CameraIcon } from "../components/icons";
 import SaveSheet from "../components/SaveSheet";
 import { readFrame } from "../lib/vision";
-import { recognizeText } from "../lib/ocr";
+import { recognizeText, ocrAvailable } from "../lib/ocr";
+import { cropToRect, boxToPhotoRect } from "../lib/crop";
 import { parseLabel } from "../lib/dateParser";
 
-const STEADY_MS = 1200;
-// ponytail: accelerometer delta (g) that counts as "still". Tune per device —
-// phones with noisier IMUs may need a touch more. Real motion blows past this.
-const STEADY_DELTA = 0.05;
+const STEADY_MS = 900;     // hold-still time before an OCR attempt
+const STEADY_DELTA = 0.06; // accelerometer "still" threshold (g) — lenient for shaky hands
+const MOTION_DELTA = 0.13; // movement that re-arms auto-capture (a fresh aim)
+const COOLDOWN_MS = 1500;  // min gap between auto attempts
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const R = 30;
+const R = 34;
 const CIRC = 2 * Math.PI * R;
 
 function Ring({ progress, color }) {
   const offset = progress.interpolate({ inputRange: [0, 1], outputRange: [CIRC, 0], extrapolate: "clamp" });
   return (
-    <Svg width={76} height={76} style={{ transform: [{ rotate: "-90deg" }] }}>
-      <Circle cx={38} cy={38} r={R} stroke="rgba(255,255,255,0.25)" strokeWidth={5} fill="none" />
-      <AnimatedCircle
-        cx={38} cy={38} r={R} stroke={color} strokeWidth={5} fill="none"
-        strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={offset}
-      />
+    <Svg width={84} height={84} style={{ transform: [{ rotate: "-90deg" }] }}>
+      <Circle cx={42} cy={42} r={R} stroke="rgba(255,255,255,0.25)" strokeWidth={5} fill="none" />
+      <AnimatedCircle cx={42} cy={42} r={R} stroke={color} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={offset} />
     </Svg>
   );
 }
@@ -43,23 +41,78 @@ export default function ScannerScreen({ active }) {
   const [result, setResult] = useState(null);
   const [sheet, setSheet] = useState(false);
   const [notice, setNotice] = useState("");
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [dbg, setDbg] = useState("");
 
   const camRef = useRef(null);
   const progress = useRef(new Animated.Value(0)).current;
-  const wander = useRef(new Animated.Value(0)).current; // focal drift while hunting
-  const snug = useRef(new Animated.Value(1)).current;   // box tightens when locking on
+  const wander = useRef(new Animated.Value(0)).current;
+  const snug = useRef(new Animated.Value(1)).current;
   const fillRef = useRef(null);
   const prevRef = useRef(null);
   const fillingRef = useRef(false);
+  const busyRef = useRef(false);
+  const cooldownRef = useRef(0);
   const unsteadyRef = useRef(0);
   const lockRef = useRef(false);
+  const armedRef = useRef(true); // only auto-capture after a fresh aim (move → settle)
 
   const resume = useCallback(() => {
     lockRef.current = false;
+    busyRef.current = false;
+    cooldownRef.current = 0;
+    armedRef.current = true;
     setSheet(false);
     setResult(null);
-    setLocked(false); // remounts camera + re-arms the steadiness effect
+    setNotice("");
+    setLocked(false);
   }, []);
+
+  const flash = useCallback((msg) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(""), 1600);
+  }, []);
+
+  const attempt = useCallback(async (force = false) => {
+    if (lockRef.current || busyRef.current) return;
+    busyRef.current = true;
+    armedRef.current = false; // used this aim; needs fresh motion to auto-fire again
+    fillingRef.current = false;
+    fillRef.current?.stop();
+    let photo = null, ocrUri = null;
+    try {
+      const pic = await camRef.current?.takePictureAsync({ quality: 1 });
+      photo = pic?.uri || null;
+      // a bit looser than the visible box so a date next to other text isn't clipped
+      const rect = boxToPhotoRect(pic?.width, pic?.height, size.w, size.h, 0.9, 0.46);
+      ocrUri = rect && photo ? await cropToRect(photo, rect) : photo;
+    } catch { /* ignore */ }
+
+    let text = ocrAvailable ? await recognizeText(ocrUri || photo) : readFrame();
+    let parsed = parseLabel(text || "", settings.region);
+    // fallback: if the tight crop found no date, try the whole frame
+    if (ocrAvailable && !parsed.exp && photo && ocrUri !== photo) {
+      const full = await recognizeText(photo);
+      const fullParsed = parseLabel(full || "", settings.region);
+      if (fullParsed.exp) { text = full; parsed = fullParsed; }
+    }
+    if (ocrAvailable) setDbg(text ? text.replace(/\s+/g, " ").slice(0, 80) : "(no text)");
+
+    if (!parsed.exp && !force) {
+      busyRef.current = false;
+      cooldownRef.current = Date.now() + COOLDOWN_MS;
+      progress.setValue(0);
+      setPhase("search");
+      flash(ocrAvailable ? "No date found — move closer, then hold steady" : "Scanning…");
+      return;
+    }
+
+    lockRef.current = true;
+    setLocked(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setResult({ ...parsed, photo });
+    setSheet(true);
+  }, [settings.region, progress, flash, size.w, size.h]);
 
   const cancelFill = useCallback(() => {
     fillingRef.current = false;
@@ -69,64 +122,33 @@ export default function ScannerScreen({ active }) {
     Animated.spring(snug, { toValue: 1, useNativeDriver: true, bounciness: 6 }).start();
   }, [progress, snug]);
 
-  const snap = useCallback(async () => {
-    if (lockRef.current) return;       // exactly one snap per steady lock
-    lockRef.current = true;
-    fillingRef.current = false;
-    fillRef.current?.stop();
-    setLocked(true);                   // unmounts CameraView → feed pauses
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    let photo = null;
-    try {
-      const pic = await camRef.current?.takePictureAsync({ quality: 0.6, skipProcessing: true });
-      photo = pic?.uri || null;
-    } catch { /* preview-only is fine */ }
-    // Real OCR on the captured photo when available (dev build); otherwise the
-    // local simulator produces label text so Expo Go still demos end-to-end.
-    const real = await recognizeText(photo);
-    const text = real ?? readFrame();
-    const parsed = parseLabel(text, settings.region);
-    // With real OCR, a blank/unreadable frame yields no date — let the user retry
-    // instead of saving an empty item. (Simulator always returns a date.)
-    if (real && !parsed.exp) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      setNotice("Couldn't read a date — try again");
-      setTimeout(() => setNotice(""), 2200);
-      resume();
-      return;
-    }
-    setResult({ ...parsed, photo });
-    setSheet(true);
-  }, [settings.region, progress, resume]);
-
   const startFill = useCallback(() => {
     fillingRef.current = true;
     setPhase("steady");
     progress.setValue(0);
-    Animated.spring(snug, { toValue: 0.8, useNativeDriver: true, bounciness: 8 }).start(); // lock onto target
+    Animated.spring(snug, { toValue: 0.86, useNativeDriver: true, bounciness: 8 }).start();
     fillRef.current = Animated.timing(progress, { toValue: 1, duration: STEADY_MS, useNativeDriver: false });
-    fillRef.current.start(({ finished }) => { if (finished) snap(); });
-  }, [progress, snap, snug]);
+    fillRef.current.start(({ finished }) => { if (finished) attempt(false); });
+  }, [progress, snug, attempt]);
 
-  // Gentle focal drift while hunting for the label — the box "looks around".
   useEffect(() => {
     if (!(active && perm?.granted) || sheet || locked) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(wander, { toValue: 1, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(wander, { toValue: 0, duration: 1700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(wander, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(wander, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [active, perm?.granted, sheet, locked, wander]);
 
-  // Real steadiness gate: hold the phone still → ring fills → snap. Motion resets.
   useEffect(() => {
     if (!(active && perm?.granted) || sheet || locked) return;
     prevRef.current = null;
     unsteadyRef.current = 0;
     fillingRef.current = false;
+    busyRef.current = false;
     progress.setValue(0);
     setPhase("search");
     Accelerometer.setUpdateInterval(80);
@@ -135,9 +157,10 @@ export default function ScannerScreen({ active }) {
       prevRef.current = { x, y, z };
       if (!prev) return;
       const delta = Math.abs(x - prev.x) + Math.abs(y - prev.y) + Math.abs(z - prev.z);
+      if (delta > MOTION_DELTA) armedRef.current = true;
       if (delta < STEADY_DELTA) {
         unsteadyRef.current = 0;
-        if (!fillingRef.current) startFill();
+        if (armedRef.current && !fillingRef.current && !busyRef.current && Date.now() >= cooldownRef.current) startFill();
       } else {
         unsteadyRef.current += 1;
         if (unsteadyRef.current >= 2 && fillingRef.current) cancelFill();
@@ -157,24 +180,34 @@ export default function ScannerScreen({ active }) {
           Pekko needs the camera to read expiry labels. Photos stay on your phone — always.
         </Text>
         <View style={{ height: SPACE.lg }} />
-        <PrimaryButton label="Allow camera" palette={palette} onPress={requestPerm} />
+        <View style={{ width: "82%" }}>
+          <PrimaryButton label="Allow camera" palette={palette} onPress={requestPerm} />
+        </View>
       </View>
     );
   }
 
   const ringColor = phase === "steady" ? "#9BE7B8" : "#FFFFFF";
-  const hud = notice || (locked ? "Captured" : phase === "steady" ? "Hold steady…" : "Point at the date label");
-  const driftX = wander.interpolate({ inputRange: [0, 1], outputRange: [-14, 14] });
-  const driftY = wander.interpolate({ inputRange: [0, 1], outputRange: [10, -10] });
+  const hud = notice || (locked ? "Captured" : phase === "steady" ? "Reading…" : "Point at the date label");
+  const driftX = wander.interpolate({ inputRange: [0, 1], outputRange: [-12, 12] });
+  const driftY = wander.interpolate({ inputRange: [0, 1], outputRange: [8, -8] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {active && !locked && <CameraView ref={camRef} style={StyleSheet.absoluteFill} />}
+    <View
+      style={st.root}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize((sz) => (sz.w === width && sz.h === height ? sz : { w: width, h: height }));
+      }}
+    >
+      {active && !locked && size.h > 0 ? (
+        <CameraView ref={camRef} style={{ width: size.w, height: size.h }} facing="back" autofocus="on" />
+      ) : (
+        <View style={st.camera} />
+      )}
 
-      <View pointerEvents="none" style={st.frameWrap}>
-        <Animated.View
-          style={[st.frame, { borderColor: ringColor, transform: [{ translateX: driftX }, { translateY: driftY }, { scale: snug }] }]}
-        >
+      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, width: size.w, height: size.h, alignItems: "center", justifyContent: "center" }}>
+        <Animated.View style={[st.frame, { borderColor: ringColor, transform: [{ translateX: driftX }, { translateY: driftY }, { scale: snug }] }]}>
           {["tl", "tr", "bl", "br"].map((k) => (
             <View key={k} style={[st.corner, st[k], { borderColor: ringColor }]} />
           ))}
@@ -186,15 +219,21 @@ export default function ScannerScreen({ active }) {
         <Text style={st.hudText}>{hud}</Text>
       </View>
 
+      {!!dbg && (
+        <View pointerEvents="none" style={st.dbg}>
+          <Text style={st.dbgText} numberOfLines={3}>OCR: {dbg}</Text>
+        </View>
+      )}
+
       {!locked && (
         <View style={st.controls}>
           <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}); snap(); }}
-            style={st.shutter}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}); attempt(true); }}
+            style={({ pressed }) => [st.shutter, { opacity: pressed ? 0.7 : 1 }]}
           >
             <View style={st.shutterInner} />
           </Pressable>
-          <Text style={st.shutterHint}>Hold still to auto-scan · tap to snap now</Text>
+          <Text style={st.shutterHint}>Tap to capture — or aim and hold steady over the date</Text>
         </View>
       )}
 
@@ -214,26 +253,26 @@ export default function ScannerScreen({ active }) {
   );
 }
 
-const C = 26;
+const C = 28;
 const st = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#000" },
+  camera: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: SPACE.xl },
   permTitle: { fontSize: 24, fontWeight: "900" },
   permBody: { fontSize: 15, textAlign: "center", marginTop: SPACE.sm, lineHeight: 22 },
-  frameWrap: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  frame: { width: "80%", height: "34%", borderWidth: 1.5, borderRadius: RADIUS.md, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
+  frame: { width: "80%", height: "30%", borderWidth: 1.5, borderRadius: RADIUS.md, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   ring: { opacity: 0.95 },
   corner: { position: "absolute", width: C, height: C },
   tl: { top: -2, left: -2, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: RADIUS.md },
   tr: { top: -2, right: -2, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: RADIUS.md },
   bl: { bottom: -2, left: -2, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: RADIUS.md },
   br: { bottom: -2, right: -2, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: RADIUS.md },
-  hud: { position: "absolute", top: Platform.OS === "ios" ? 64 : 40, left: 0, right: 0, alignItems: "center" },
-  hudText: {
-    color: "#fff", fontSize: 15, fontWeight: "700", backgroundColor: "rgba(0,0,0,0.35)",
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.pill, overflow: "hidden",
-  },
-  controls: { position: "absolute", bottom: 40, left: 0, right: 0, alignItems: "center", gap: SPACE.sm },
-  shutter: { width: 74, height: 74, borderRadius: 999, borderWidth: 5, borderColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center" },
-  shutterInner: { width: 56, height: 56, borderRadius: 999, backgroundColor: "#fff" },
-  shutterHint: { color: "rgba(255,255,255,0.85)", fontSize: 12.5, fontWeight: "600" },
+  hud: { position: "absolute", top: Platform.OS === "ios" ? 64 : 44, left: 0, right: 0, alignItems: "center" },
+  hudText: { color: "#fff", fontSize: 17, fontWeight: "800", backgroundColor: "rgba(0,0,0,0.45)", paddingHorizontal: 18, paddingVertical: 10, borderRadius: RADIUS.pill, overflow: "hidden" },
+  dbg: { position: "absolute", bottom: 210, left: 16, right: 16, alignItems: "center" },
+  dbgText: { color: "#fff", fontSize: 12, fontWeight: "600", backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, overflow: "hidden", textAlign: "center" },
+  controls: { position: "absolute", bottom: 44, left: 0, right: 0, alignItems: "center", gap: SPACE.md },
+  shutter: { width: 88, height: 88, borderRadius: 999, borderWidth: 6, borderColor: "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center" },
+  shutterInner: { width: 68, height: 68, borderRadius: 999, backgroundColor: "#fff" },
+  shutterHint: { color: "#fff", fontSize: 14.5, fontWeight: "700", paddingHorizontal: SPACE.lg, textAlign: "center" },
 });

@@ -81,6 +81,7 @@ export default function FridgeScreen() {
         palette={palette}
         onClose={() => setDrawerKey(null)}
         onOpenItem={(it) => { setDrawerKey(null); setDetail(it); }}
+        onRemove={removeItem}
       />
 
       <ItemDetail

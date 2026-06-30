@@ -5,5 +5,9 @@ web-build/
 *.log
 .DS_Store
 
+# generated native projects (regenerate with `expo prebuild`)
+/android/
+/ios/
+
 # local design reference (contains personal images) — not for the public repo
 FridgeUiRedesignSpec/
