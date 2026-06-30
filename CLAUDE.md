@@ -18,6 +18,18 @@ The UI uses **custom line-art / drawn SVG icons only** (`src/components/FoodIcon
 `src/components/icons.js`) — never emoji glyphs. Applies to every surface (categories,
 placeholders, boot, permission screens, notification text). Add an icon, don't reach for emoji.
 
+## Gotcha: bottom-sheet drag-to-close (don't regress this)
+
+`SwipeSheet` is a transparent `Modal`. On the **New Architecture**, `PanResponder`'s
+**move-based** responder negotiation is unreliable inside a Modal (taps work, drags don't
+fire). The working pattern:
+- The **grabber + header handle** uses `onStartShouldSetPanResponder: () => true`
+  (grab on touch-down). It has no tappable children, so this is safe and reliable.
+- Scrollable sheets (CategoryDrawer) attach the pan to the **handle only**, so the list
+  still scrolls; non-scroll sheets also put a move-based pan on the sheet background.
+- Don't attach the same PanResponder instance to two nested views — it cancels itself out.
+This is confirmed working; if a sheet stops closing on swipe, this is why.
+
 ## Quick project facts
 
 - Expo SDK 56 / RN 0.85 / React 19, **New-Architecture only** (`newArchEnabled` is not a
