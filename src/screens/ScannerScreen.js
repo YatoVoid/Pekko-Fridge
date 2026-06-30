@@ -43,7 +43,6 @@ export default function ScannerScreen({ active }) {
   const [sheet, setSheet] = useState(false);
   const [notice, setNotice] = useState("");
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [dbg, setDbg] = useState("");
 
   const camRef = useRef(null);
   const progress = useRef(new Animated.Value(0)).current;
@@ -107,7 +106,6 @@ export default function ScannerScreen({ active }) {
       text = readFrame();
       parsed = parseLabel(text, settings.region);
     }
-    if (ocrAvailable) setDbg(text ? text.replace(/\s+/g, " ").slice(0, 80) : "(no text)");
 
     if (!parsed.exp && !force) {
       busyRef.current = false;
@@ -230,11 +228,6 @@ export default function ScannerScreen({ active }) {
         <Text style={st.hudText}>{hud}</Text>
       </View>
 
-      {!!dbg && (
-        <View pointerEvents="none" style={st.dbg}>
-          <Text style={st.dbgText} numberOfLines={3}>OCR: {dbg}</Text>
-        </View>
-      )}
 
       {!locked && (
         <View style={st.controls}>
@@ -280,8 +273,6 @@ const st = StyleSheet.create({
   br: { bottom: -2, right: -2, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: RADIUS.md },
   hud: { position: "absolute", top: Platform.OS === "ios" ? 64 : 44, left: 0, right: 0, alignItems: "center" },
   hudText: { color: "#fff", fontSize: 17, fontWeight: "800", backgroundColor: "rgba(0,0,0,0.45)", paddingHorizontal: 18, paddingVertical: 10, borderRadius: RADIUS.pill, overflow: "hidden" },
-  dbg: { position: "absolute", bottom: 210, left: 16, right: 16, alignItems: "center" },
-  dbgText: { color: "#fff", fontSize: 12, fontWeight: "600", backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, overflow: "hidden", textAlign: "center" },
   controls: { position: "absolute", bottom: 44, left: 0, right: 0, alignItems: "center", gap: SPACE.md },
   shutter: { width: 88, height: 88, borderRadius: 999, borderWidth: 6, borderColor: "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center" },
   shutterInner: { width: 68, height: 68, borderRadius: 999, backgroundColor: "#fff" },
