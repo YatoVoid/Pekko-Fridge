@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pekko Fridge",
     "slug": "pekko-fridge",
-    "version": "1.0.1",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
