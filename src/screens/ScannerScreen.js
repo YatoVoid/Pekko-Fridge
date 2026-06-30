@@ -12,6 +12,7 @@ import SaveSheet from "../components/SaveSheet";
 import { readFrame } from "../lib/vision";
 import { recognizeText, ocrAvailable } from "../lib/ocr";
 import { cropToRect, boxToPhotoRect } from "../lib/crop";
+import { enhanceForOcr } from "../lib/enhance";
 import { parseLabel } from "../lib/dateParser";
 
 const STEADY_MS = 900;     // hold-still time before an OCR attempt
@@ -88,13 +89,23 @@ export default function ScannerScreen({ active }) {
       ocrUri = rect && photo ? await cropToRect(photo, rect) : photo;
     } catch { /* ignore */ }
 
-    let text = ocrAvailable ? await recognizeText(ocrUri || photo) : readFrame();
-    let parsed = parseLabel(text || "", settings.region);
-    // fallback: if the tight crop found no date, try the whole frame
-    if (ocrAvailable && !parsed.exp && photo && ocrUri !== photo) {
-      const full = await recognizeText(photo);
-      const fullParsed = parseLabel(full || "", settings.region);
-      if (fullParsed.exp) { text = full; parsed = fullParsed; }
+    let text = "";
+    let parsed = { exp: null };
+    if (ocrAvailable) {
+      // Multi-pass: contrast-enhanced crop (best for gray text) → raw crop → full frame.
+      const passes = [];
+      if (ocrUri) passes.push(async () => recognizeText(await enhanceForOcr(ocrUri)));
+      if (ocrUri) passes.push(() => recognizeText(ocrUri));
+      if (photo && photo !== ocrUri) passes.push(() => recognizeText(photo));
+      for (const run of passes) {
+        const t = await run();
+        const p = parseLabel(t || "", settings.region);
+        if (!text && t) text = t; // remember first non-empty for the debug line
+        if (p.exp) { text = t; parsed = p; break; }
+      }
+    } else {
+      text = readFrame();
+      parsed = parseLabel(text, settings.region);
     }
     if (ocrAvailable) setDbg(text ? text.replace(/\s+/g, " ").slice(0, 80) : "(no text)");
 
