@@ -1,12 +1,15 @@
 // Slide-up drawer for one category: lists its items; tap an item for full detail.
 import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Dimensions } from "react-native";
 import { RADIUS, SPACE, catColors } from "../theme";
+
+const LIST_MAX = Math.round(Dimensions.get("window").height * 0.5); // grow, then scroll
 import { CategoryIcon } from "./FoodIcons";
 import { ItemRow } from "./Fridge";
 import SwipeSheet from "./SwipeSheet";
+import SwipeRow from "./SwipeRow";
 
-export default function CategoryDrawer({ category, items = [], palette, onClose, onOpenItem }) {
+export default function CategoryDrawer({ category, items = [], palette, onClose, onOpenItem, onRemove }) {
   return (
     <SwipeSheet visible={!!category} onClose={onClose} palette={palette}>
       {category && (
@@ -23,11 +26,15 @@ export default function CategoryDrawer({ category, items = [], palette, onClose,
             </View>
           </View>
 
-          <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ maxHeight: LIST_MAX }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={true}>
             {items.length === 0 ? (
               <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty — scan something tasty.</Text>
             ) : (
-              items.map((it) => <ItemRow key={it.id} item={it} palette={palette} onOpenItem={onOpenItem} />)
+              items.map((it) => (
+                <SwipeRow key={it.id} palette={palette} onRemove={() => onRemove?.(it.id)}>
+                  <ItemRow item={it} palette={palette} onOpenItem={onOpenItem} />
+                </SwipeRow>
+              ))
             )}
           </ScrollView>
         </>

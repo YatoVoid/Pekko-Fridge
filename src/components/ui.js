@@ -51,7 +51,7 @@ const s = StyleSheet.create({
   },
   bubbleText: { fontSize: 13, fontWeight: "800" },
   btn: {
-    borderRadius: RADIUS.lg, paddingVertical: 17, alignItems: "center", justifyContent: "center",
+    borderRadius: RADIUS.lg, paddingVertical: 17, paddingHorizontal: 28, alignItems: "center", justifyContent: "center",
     shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
   },
   btnText: { fontSize: 17, fontWeight: "800", letterSpacing: 0.3 },

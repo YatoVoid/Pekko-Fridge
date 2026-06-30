@@ -1,6 +1,6 @@
-// Full info for one item: every saved photo + dates + remove. Opens on item tap.
-import React from "react";
-import { View, Text, Pressable, ScrollView, Image, StyleSheet } from "react-native";
+// Full info for one item: photos + editable name & expiry + remove.
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { RADIUS, SPACE, catOf, catColors } from "../theme";
 import { CategoryIcon } from "./FoodIcons";
@@ -9,8 +9,17 @@ import { formatDate } from "../lib/expiry";
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import { photosOf } from "./Fridge";
 import SwipeSheet from "./SwipeSheet";
+import DateField from "./DateField";
 
 export default function ItemDetail({ item, palette, region, onClose, onUpdate, onRemove }) {
+  const [editingName, setEditingName] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    setEditingName(false);
+    setDraft(item?.name || "");
+  }, [item?.id]);
+
   if (!item) return <SwipeSheet visible={false} onClose={onClose} palette={palette}><View /></SwipeSheet>;
 
   const photos = photosOf(item);
@@ -21,8 +30,11 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
     const uri = await (fromLibrary ? pickFromLibrary() : takePhoto());
     if (uri) onUpdate(item.id, { photos: [...photos, uri] });
   };
-
   const removePhoto = (i) => onUpdate(item.id, { photos: photos.filter((_, j) => j !== i) });
+  const commitName = () => {
+    onUpdate(item.id, { name: draft.trim() || item.name });
+    setEditingName(false);
+  };
 
   return (
     <SwipeSheet visible={!!item} onClose={onClose} palette={palette}>
@@ -34,7 +46,21 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
         <ExpiryBadge exp={item.exp} palette={palette} />
       </View>
 
-      <Text style={[s.name, { color: palette.text }]}>{item.name}</Text>
+      {editingName ? (
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onBlur={commitName}
+          onSubmitEditing={commitName}
+          autoFocus
+          maxLength={40}
+          style={[s.nameInput, { color: palette.text, borderColor: palette.accent, backgroundColor: palette.surfaceAlt }]}
+        />
+      ) : (
+        <Pressable onPress={() => { Haptics.selectionAsync().catch(() => {}); setDraft(item.name); setEditingName(true); }}>
+          <Text style={[s.name, { color: palette.text }]}>{item.name} <Text style={[s.editHint, { color: palette.accent }]}>Edit</Text></Text>
+        </Pressable>
+      )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.gallery}>
         {photos.map((uri, i) => (
@@ -51,8 +77,10 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
         <Text style={[s.hint, { color: palette.textSoft }]}>Hold a photo to remove it · hold ＋ to pick from library</Text>
       )}
 
+      <Text style={[s.fieldLabel, { color: palette.textSoft }]}>Expires</Text>
+      <DateField value={item.exp} onChange={(d) => onUpdate(item.id, { exp: d })} palette={palette} region={region} />
+
       <View style={[s.facts, { backgroundColor: palette.surfaceAlt }]}>
-        <Fact label="Expires" value={formatDate(item.exp, region)} palette={palette} strong />
         {item.mfg ? <Fact label="Made" value={formatDate(item.mfg, region)} palette={palette} /> : null}
         <Fact label="Added" value={formatDate(item.createdAt, region)} palette={palette} />
       </View>
@@ -71,11 +99,11 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
   );
 }
 
-function Fact({ label, value, palette, strong }) {
+function Fact({ label, value, palette }) {
   return (
     <View style={s.factRow}>
       <Text style={[s.factLabel, { color: palette.textSoft }]}>{label}</Text>
-      <Text style={[strong ? s.factStrong : s.factVal, { color: palette.text }]}>{value}</Text>
+      <Text style={[s.factVal, { color: palette.text }]}>{value}</Text>
     </View>
   );
 }
@@ -83,8 +111,10 @@ function Fact({ label, value, palette, strong }) {
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: SPACE.sm },
   chip: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: RADIUS.pill, paddingHorizontal: 12, paddingVertical: 7 },
-  chipText: { fontSize: 13.5, fontWeight: "800", color: "#4A433B" },
+  chipText: { fontSize: 13.5, fontWeight: "800" },
   name: { fontSize: 26, fontWeight: "900", marginBottom: SPACE.md },
+  editHint: { fontSize: 14, fontWeight: "800" },
+  nameInput: { fontSize: 24, fontWeight: "900", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: SPACE.md, paddingVertical: 10, marginBottom: SPACE.md },
   gallery: { gap: SPACE.sm, paddingVertical: 2 },
   shotWrap: { borderRadius: RADIUS.md, overflow: "hidden" },
   shot: { width: 200, height: 200, borderRadius: RADIUS.md },
@@ -92,11 +122,11 @@ const s = StyleSheet.create({
   addPlus: { fontSize: 30, fontWeight: "700" },
   addLabel: { fontSize: 13, fontWeight: "700" },
   hint: { fontSize: 11.5, marginTop: 6 },
+  fieldLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 1, marginTop: SPACE.md, marginBottom: 6 },
   facts: { borderRadius: RADIUS.md, padding: SPACE.md, gap: SPACE.sm, marginTop: SPACE.md },
   factRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
   factLabel: { fontSize: 13, fontWeight: "700" },
   factVal: { fontSize: 15, fontWeight: "600" },
-  factStrong: { fontSize: 20, fontWeight: "900", letterSpacing: 0.4 },
   remove: { marginTop: SPACE.lg, borderWidth: 1.5, borderRadius: RADIUS.lg, paddingVertical: 15, alignItems: "center" },
   removeText: { fontSize: 15.5, fontWeight: "800" },
 });

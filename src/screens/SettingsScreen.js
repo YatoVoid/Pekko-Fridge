@@ -104,6 +104,18 @@ export default function SettingsScreen() {
         )}
       </Card>
 
+      <Card title="Auto-cleanup" subtitle="Tidy the fridge by removing old expired items." palette={palette}>
+        <Text style={[s.rowLabel, { color: palette.text }]}>
+          Remove {settings.autoRemoveDays} day{settings.autoRemoveDays === 1 ? "" : "s"} after expiry
+        </Text>
+        <View style={{ height: SPACE.sm }} />
+        <View style={s.stepper}>
+          <Step palette={palette} label="–" onPress={() => updateSettings({ autoRemoveDays: Math.max(1, settings.autoRemoveDays - 1) })} />
+          <Text style={[s.stepVal, { color: palette.text }]}>{settings.autoRemoveDays}</Text>
+          <Step palette={palette} label="+" onPress={() => updateSettings({ autoRemoveDays: Math.min(30, settings.autoRemoveDays + 1) })} />
+        </View>
+      </Card>
+
       <Text style={[s.footer, { color: palette.textSoft }]}>
         Pekko runs 100% on this phone. No accounts, no cloud, no tracking.
       </Text>

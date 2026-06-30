@@ -16,8 +16,10 @@ const DEFAULT_SETTINGS = {
   region: "DMY",       // "MDY" | "DMY" | "YMD"
   notify: true,
   notifyDays: 2,
+  autoRemoveDays: 7, // delete items this many days after they expire
   fridgeName: DEFAULT_FRIDGE_NAME,
   binOrder: ["cheese", "dairy", "meat", "packaged", "veg", "other"],
+  onboarded: false,
 };
 
 const Ctx = createContext(null);
@@ -45,6 +47,9 @@ export function AppProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [items, setItems] = useState([]);
   const [ready, setReady] = useState(false);
+  const [overlays, setOverlays] = useState(0); // open sheets/modals (freezes page swipe)
+  const addOverlay = useCallback(() => setOverlays((n) => n + 1), []);
+  const removeOverlay = useCallback(() => setOverlays((n) => Math.max(0, n - 1)), []);
 
   useEffect(() => {
     (async () => {
@@ -52,12 +57,16 @@ export function AppProvider({ children }) {
         load(KEY_SETTINGS, DEFAULT_SETTINGS),
         load(KEY_ITEMS, []),
       ]);
-      setSettings({ ...DEFAULT_SETTINGS, ...s });
+      const merged = { ...DEFAULT_SETTINGS, ...s };
+      setSettings(merged);
       // migrate retired "packaged" category → "other"
       const migrated = (Array.isArray(it) ? it : []).map((i) =>
         i.category === "packaged" ? { ...i, category: "other" } : i
       );
-      setItems(migrated);
+      // auto-remove items that expired more than autoRemoveDays ago
+      const cutoff = Date.now() - (merged.autoRemoveDays ?? 7) * 86400000;
+      const kept = migrated.filter((i) => !(i.exp && new Date(i.exp).getTime() < cutoff));
+      setItems(kept);
       setReady(true);
     })();
   }, []);
@@ -93,7 +102,8 @@ export function AppProvider({ children }) {
           title: "Rescue your food",
           body: `${item.name} expires in ${settings.notifyDays} day${settings.notifyDays === 1 ? "" : "s"}.`,
         },
-        trigger: when,
+        // SDK 56 wants a typed trigger, not a bare Date.
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
       });
     } catch {
       return null;
@@ -119,7 +129,7 @@ export function AppProvider({ children }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ ready, palette, settings, updateSettings, items, addItem, updateItem, removeItem }}>
+    <Ctx.Provider value={{ ready, palette, settings, updateSettings, items, addItem, updateItem, removeItem, overlayOpen: overlays > 0, addOverlay, removeOverlay }}>
       {children}
     </Ctx.Provider>
   );
