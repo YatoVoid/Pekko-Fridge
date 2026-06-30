@@ -10,34 +10,34 @@ import SwipeSheet from "./SwipeSheet";
 import SwipeRow from "./SwipeRow";
 
 export default function CategoryDrawer({ category, items = [], palette, onClose, onOpenItem, onRemove }) {
-  return (
-    <SwipeSheet visible={!!category} onClose={onClose} palette={palette}>
-      {category && (
-        <>
-          <View style={s.head}>
-            <View style={[s.iconChip, { backgroundColor: catColors(category, palette.mode).tint }]}>
-              <CategoryIcon catKey={category.key} size={30} />
-            </View>
-            <View>
-              <Text style={[s.title, { color: palette.text }]}>{category.label}</Text>
-              <Text style={[s.sub, { color: palette.textSoft }]}>
-                {items.length} item{items.length === 1 ? "" : "s"} inside
-              </Text>
-            </View>
-          </View>
+  const header = category ? (
+    <View style={s.head}>
+      <View style={[s.iconChip, { backgroundColor: catColors(category, palette.mode).tint }]}>
+        <CategoryIcon catKey={category.key} size={30} />
+      </View>
+      <View>
+        <Text style={[s.title, { color: palette.text }]}>{category.label}</Text>
+        <Text style={[s.sub, { color: palette.textSoft }]}>
+          {items.length} item{items.length === 1 ? "" : "s"} inside · swipe down to close
+        </Text>
+      </View>
+    </View>
+  ) : null;
 
-          <ScrollView style={{ maxHeight: LIST_MAX }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={true}>
-            {items.length === 0 ? (
-              <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty — scan something tasty.</Text>
-            ) : (
-              items.map((it) => (
-                <SwipeRow key={it.id} palette={palette} onRemove={() => onRemove?.(it.id)}>
-                  <ItemRow item={it} palette={palette} onOpenItem={onOpenItem} />
-                </SwipeRow>
-              ))
-            )}
-          </ScrollView>
-        </>
+  return (
+    <SwipeSheet visible={!!category} onClose={onClose} palette={palette} scrollable header={header}>
+      {category && (
+        <ScrollView style={{ maxHeight: LIST_MAX }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={true}>
+          {items.length === 0 ? (
+            <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty — scan something tasty.</Text>
+          ) : (
+            items.map((it) => (
+              <SwipeRow key={it.id} palette={palette} onRemove={() => onRemove?.(it.id)}>
+                <ItemRow item={it} palette={palette} onOpenItem={onOpenItem} />
+              </SwipeRow>
+            ))
+          )}
+        </ScrollView>
       )}
     </SwipeSheet>
   );
