@@ -39,7 +39,8 @@
         {
           "photosPermission": "Pekko lets you attach photos of your food. They stay on your phone."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

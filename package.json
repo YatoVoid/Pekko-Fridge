@@ -3,27 +3,30 @@
   "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
+    "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-native start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "test": "node tests/dateParser.test.js"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-ml-kit/text-recognition": "^2.0.0",
-    "expo": "~51.0.0",
-    "expo-camera": "~15.0.0",
-    "expo-dev-client": "~4.0.29",
-    "expo-haptics": "~13.0.0",
-    "expo-image-picker": "~15.1.0",
-    "expo-linear-gradient": "~13.0.2",
-    "expo-notifications": "~0.28.0",
-    "expo-sensors": "~13.0.9",
-    "expo-status-bar": "~1.12.0",
-    "react": "18.2.0",
-    "react-native": "0.74.5",
-    "react-native-safe-area-context": "4.10.5",
-    "react-native-svg": "15.2.0"
+    "expo": "^56.0.12",
+    "expo-camera": "~56.0.8",
+    "expo-dev-client": "^56.0.20",
+    "expo-haptics": "~56.0.3",
+    "expo-image-picker": "~56.0.18",
+    "expo-linear-gradient": "~56.0.4",
+    "expo-notifications": "^56.0.18",
+    "expo-sensors": "~56.0.6",
+    "expo-status-bar": "~56.0.4",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "cross-env": "^10.1.0"
+  }
 }
