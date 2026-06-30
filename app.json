@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Pekko Fridge",
+    "slug": "pekko-fridge",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#FDFBF7",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pekko.fridge",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Pekko uses the camera to scan expiry dates. Photos never leave your phone."
+      }
+    },
+    "android": {
+      "package": "com.pekko.fridge",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pekko uses the camera to scan expiry dates locally."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pekko lets you attach photos of your food. They stay on your phone."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "076b5975-8a35-48be-a951-dcbbd32b2be7"
+      }
+    }
+  }
+}

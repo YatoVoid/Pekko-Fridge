@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+
+# local design reference (contains personal images) — not for the public repo
+FridgeUiRedesignSpec/
