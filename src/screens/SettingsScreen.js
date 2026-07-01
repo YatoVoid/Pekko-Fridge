@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Switch, Pressable, ScrollView, TextInput, StyleSheet } from "react-native";
+import { View, Text, Switch, Pressable, ScrollView, TextInput, StyleSheet, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp } from "../store";
@@ -119,6 +119,18 @@ export default function SettingsScreen() {
       <Text style={[s.footer, { color: palette.textSoft }]}>
         Pekko runs 100% on this phone. No accounts, no cloud, no tracking.
       </Text>
+
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync().catch(() => {});
+          Linking.openURL("https://buymeacoffee.com/walilambere").catch(() => {});
+        }}
+        style={s.tip}
+      >
+        <Text style={[s.tipText, { color: palette.textSoft }]}>
+          Made by one person. If Pekko helps you, you can buy me a coffee.
+        </Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -152,4 +164,6 @@ const s = StyleSheet.create({
   stepText: { fontSize: 26, fontWeight: "800" },
   stepVal: { fontSize: 30, fontWeight: "900", minWidth: 40, textAlign: "center" },
   footer: { fontSize: 13, textAlign: "center", marginTop: SPACE.md, lineHeight: 20 },
+  tip: { marginTop: SPACE.sm, paddingVertical: SPACE.sm },
+  tipText: { fontSize: 12.5, textAlign: "center", lineHeight: 18, opacity: 0.9 },
 });

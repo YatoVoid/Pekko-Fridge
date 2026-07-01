@@ -11,3 +11,6 @@ web-build/
 
 # local design reference (contains personal images) — not for the public repo
 FridgeUiRedesignSpec/
+
+# intermediate store screenshot captures (not for repo)
+assets/store/raw/
