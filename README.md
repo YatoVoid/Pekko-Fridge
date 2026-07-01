@@ -1,17 +1,33 @@
-# 🎌 Pekko Fridge — Cute, Local-First Expiry Date Scanner 
+# Pekko Fridge
 
-A privacy-focused, minimalistic, "Japanese cute" (Kawaii) expiration date tracker that runs 100% locally on your phone. No internet required, no cloud data harvesting, and completely free. 
+Pekko Fridge is a cute, private expiry date tracker for your food. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
 
-Scan any product's back label, and the app instantly auto-crops, runs local OCR to read the dates, and calculates exactly how many days remain before it spoils. Save your groceries into categorized, beautifully illustrated folder tabs (Cheese, Meat, Dairy) inside your virtual "Fridge" and set custom notifications before they go bad.
+Point the camera at a product's date label. Pekko reads the date on your device, works out how many days are left, and saves the item into your fridge so you always know what to eat first.
 
-## ✨ Features
-* 📸 **Smart-Crop Camera:** Visual UI feedback that morphs to show users exactly where the label is being cropped before automatically snapping.
-* 🧠 **100% Local OCR & Processing:** Ultra-fast on-device date scanning that runs completely offline with zero latency.
-* 🍱 **Kawaii Minimalist UI:** A clean aesthetic inspired by Japanese organization, featuring cute custom food category icons.
-* ⚙️ **Localization Settings:** Quickly toggle between region-specific time units and calendar formats (American, European, etc.) and system themes.
-* 🔔 **Smart Fridge Reminders:** Set custom advance notice alerts to rescue your food before it hits its expiration date.
+## What it does
 
-## 🛠️ Tech Stack (Targeting Cross-Platform iOS & Android)
-* **Framework:** React Native / Expo (or Flutter) for shared cross-platform codebase.
-* **On-Device Vision:** Google ML Kit (Android) & Apple Vision Framework (iOS) via native bridges for zero-latency, local OCR.
-* **Database:** WatermelonDB or SQLite for fast, local-first data persistence.
+Scan dates with the camera. A crop guide shows what will be read, then Pekko reads the printed date on device and calculates the days remaining.
+
+Keep photos of each item. You can attach pictures of the label or the product so you remember exactly what it is. The photos stay on your phone.
+
+Organise your fridge into categories. Items sit in tidy tabs for Dairy, Cheese, Meat, Soup, Vegetables, and Other, each with its own drawn icon.
+
+See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer.
+
+Get a gentle reminder. Turn on notifications and Pekko nudges you before food is about to spoil.
+
+Make it yours. Rename your fridge, switch between light, dark, and system themes, and choose the date format that matches your region.
+
+## Privacy
+
+Everything happens locally. The camera is only used to read expiry dates, and images never leave the device. No cloud, no tracking, no sign up.
+
+## Support
+
+Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little food or money, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
+
+[Buy me a coffee](https://buymeacoffee.com/walilambere)
+
+## Status
+
+Version 1.0.1, built with Expo and React Native for Android.

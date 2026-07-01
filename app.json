@@ -2,9 +2,10 @@
   "expo": {
     "name": "Pekko Fridge",
     "slug": "pekko-fridge",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -17,6 +18,10 @@
     },
     "android": {
       "package": "com.pekko.fridge",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FBF6EE"
+      },
       "permissions": [
         "android.permission.CAMERA"
       ]
