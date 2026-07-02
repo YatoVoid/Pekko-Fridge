@@ -151,7 +151,9 @@ export default function FridgeScreen() {
 
 const s = StyleSheet.create({
   editBtn: {
-    position: "absolute", right: SPACE.lg, top: SPACE.xs, zIndex: 5,
+    // Vertically centered on the "My Fridge" pill (pill top = paddingTop SPACE.xl+12,
+    // pill ≈73 tall → center ≈+36; button is 40 tall so top = paddingTop + 16).
+    position: "absolute", right: SPACE.lg, top: SPACE.xl + 28, zIndex: 5,
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
     shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
