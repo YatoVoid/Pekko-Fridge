@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Switch, Pressable, ScrollView, TextInput, StyleSheet, Linking, PanResponder } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -37,15 +37,32 @@ function Card({ title, subtitle, palette, children }) {
 }
 
 export default function SettingsScreen() {
-  const { palette, settings, updateSettings } = useApp();
+  const { palette, settings, updateSettings, nav } = useApp();
   const insets = useSafeAreaInsets();
   const d = settings.notifyDays;
 
+  const scrollRef = useRef(null);
+  const foldersY = useRef(0);
+  const [pulse, setPulse] = useState(false);
+
+  // When another screen asks to focus the Folders section, scroll to it and pulse.
+  useEffect(() => {
+    if (nav?.focus !== "folders") return;
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, foldersY.current - 12), animated: true });
+      setPulse(true);
+      setTimeout(() => setPulse(false), 1400);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [nav]);
+
   return (
     <ScrollView
+      ref={scrollRef}
       style={{ backgroundColor: palette.bg }}
       contentContainerStyle={[s.content, { paddingBottom: 120 + insets.bottom }]}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       <Text style={[s.kicker, { color: palette.textSoft }]}>SETTINGS</Text>
       <Text style={[s.h1, { color: palette.text }]}>Make it yours</Text>
@@ -117,7 +134,9 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <FoldersCard palette={palette} settings={settings} updateSettings={updateSettings} />
+      <View onLayout={(e) => { foldersY.current = e.nativeEvent.layout.y; }}>
+        <FoldersCard palette={palette} settings={settings} updateSettings={updateSettings} highlight={pulse} />
+      </View>
 
       <Text style={[s.footer, { color: palette.textSoft }]}>
         Pekko runs 100% on this phone. No accounts, no cloud, no tracking.
@@ -137,7 +156,8 @@ export default function SettingsScreen() {
         style={s.tip}
       >
         <Text style={[s.tipText, { color: palette.textSoft }]}>
-          Made by one person. If Pekko helps you, you can buy me a coffee.
+          Made by one person. If Pekko helps you, you can{" "}
+          <Text style={s.tipLink}>buy me a coffee</Text>.
         </Text>
       </Pressable>
     </ScrollView>
@@ -159,7 +179,7 @@ function Step({ label, onPress, palette }) {
 
 const ROW_H = 56; // fixed height lets PanResponder compute integer offsets
 
-function FolderRow({ cat, index, catsRef, palette, updateSettings, onToggleHidden, onRename }) {
+function FolderRow({ cat, index, catsRef, palette, updateSettings, canDelete, onToggleHidden, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(cat.label);
   // Stable refs so PanResponder closure never goes stale.
@@ -204,15 +224,21 @@ function FolderRow({ cat, index, catsRef, palette, updateSettings, onToggleHidde
       </View>
 
       {editing ? (
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          onBlur={commitRename}
-          onSubmitEditing={commitRename}
-          autoFocus
-          maxLength={24}
-          style={[fr.renameInput, { color: palette.text, borderColor: palette.accent, backgroundColor: palette.surfaceAlt }]}
-        />
+        <View style={fr.editRow}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            onBlur={commitRename}
+            onSubmitEditing={commitRename}
+            maxLength={24}
+            style={[fr.renameInput, { color: palette.text, borderColor: palette.accent, backgroundColor: palette.surfaceAlt }]}
+          />
+          {canDelete && (
+            <Pressable onPress={onDelete} hitSlop={6} style={fr.delBtn}>
+              <Text style={[fr.delText, { color: palette.badge.bad.fg }]}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
       ) : (
         <Pressable style={fr.labelArea} onPress={() => { setDraft(cat.label); setEditing(true); }}>
           <CategoryIcon catKey={cat.icon || cat.key} size={18} />
@@ -221,7 +247,7 @@ function FolderRow({ cat, index, catsRef, palette, updateSettings, onToggleHidde
         </Pressable>
       )}
 
-      {canHide ? (
+      {!editing && (canHide ? (
         <Switch
           value={!cat.hidden}
           onValueChange={onToggleHidden}
@@ -230,12 +256,14 @@ function FolderRow({ cat, index, catsRef, palette, updateSettings, onToggleHidde
         />
       ) : (
         <View style={{ width: 51 }} />
-      )}
+      ))}
     </View>
   );
 }
 
-function FoldersCard({ palette, settings, updateSettings }) {
+const DEFAULT_KEYS = new Set(DEFAULT_CATEGORIES.map((c) => c.key));
+
+function FoldersCard({ palette, settings, updateSettings, highlight }) {
   const cats = settings.categories || DEFAULT_CATEGORIES;
   const [addingFolder, setAddingFolder] = useState(false);
   const [newLabel, setNewLabel] = useState("");
@@ -251,6 +279,12 @@ function FoldersCard({ palette, settings, updateSettings }) {
   const rename = (key, label) => {
     updateSettings({ categories: catsRef.current.map((c) => c.key === key ? { ...c, label } : c) });
   };
+  // Delete a user-created folder. Built-in folders can only be hidden, not deleted.
+  // Any items still in it fall back to "Other" automatically (see FridgeScreen inCat).
+  const deleteFolder = (key) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    updateSettings({ categories: catsRef.current.filter((c) => c.key !== key) });
+  };
   const addFolder = () => {
     if (!newLabel.trim()) return;
     Haptics.selectionAsync().catch(() => {});
@@ -262,9 +296,9 @@ function FoldersCard({ palette, settings, updateSettings }) {
   };
 
   return (
-    <View style={[s.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+    <View style={[s.card, { backgroundColor: palette.surface, borderColor: highlight ? palette.accent : palette.line }]}>
       <Text style={[s.cardTitle, { color: palette.text }]}>Folders</Text>
-      <Text style={[s.cardSub, { color: palette.textSoft }]}>Reorder, rename, or hide food bins. Drag ⠿ to move.</Text>
+      <Text style={[s.cardSub, { color: palette.textSoft }]}>Reorder, rename, hide, or add food bins. Drag ⠿ to move.</Text>
       <View style={{ height: SPACE.md }} />
 
       {cats.map((cat, index) => (
@@ -275,8 +309,10 @@ function FoldersCard({ palette, settings, updateSettings }) {
           catsRef={catsRef}
           palette={palette}
           updateSettings={updateSettings}
+          canDelete={!DEFAULT_KEYS.has(cat.key)}
           onToggleHidden={() => toggleHidden(cat.key)}
           onRename={(label) => rename(cat.key, label)}
+          onDelete={() => deleteFolder(cat.key)}
         />
       ))}
 
@@ -328,7 +364,10 @@ const fr = StyleSheet.create({
   labelArea: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm, paddingVertical: SPACE.xs },
   rowLabel: { fontSize: 15.5, fontWeight: "700", flex: 1 },
   editHint: { fontSize: 12, fontWeight: "700" },
+  editRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   renameInput: { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.sm, paddingVertical: 8, fontSize: 15.5, fontWeight: "700" },
+  delBtn: { paddingHorizontal: SPACE.xs, paddingVertical: 6 },
+  delText: { fontSize: 13, fontWeight: "800" },
   addBtn: { marginTop: SPACE.md, borderWidth: 1, borderStyle: "dashed", borderRadius: RADIUS.md, paddingVertical: 12, alignItems: "center" },
   addBtnText: { fontSize: 14, fontWeight: "700" },
   addForm: { marginTop: SPACE.md, borderWidth: 1, borderRadius: RADIUS.md, padding: SPACE.md, gap: SPACE.sm },
@@ -364,4 +403,5 @@ const s = StyleSheet.create({
   footer: { fontSize: 13, textAlign: "center", marginTop: SPACE.md, lineHeight: 20 },
   tip: { marginTop: SPACE.sm, paddingVertical: SPACE.sm },
   tipText: { fontSize: 12.5, textAlign: "center", lineHeight: 18, opacity: 0.9 },
+  tipLink: { fontWeight: "800", textDecorationLine: "underline" },
 });

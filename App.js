@@ -18,7 +18,7 @@ const TABS = [
 ];
 
 function Shell() {
-  const { ready, palette, settings, overlayOpen } = useApp();
+  const { ready, palette, settings, overlayOpen, nav } = useApp();
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
   const [tab, setTab] = useState(0);
@@ -39,6 +39,9 @@ function Shell() {
 
   // keep aligned if width changes (rotation)
   useEffect(() => { tx.setValue(-tabRef.current * W); }, [W]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A screen asked to jump elsewhere (e.g. Fridge → Settings folders).
+  useEffect(() => { if (nav) goTo(nav.tab); }, [nav]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pan = useRef(
     PanResponder.create({
