@@ -5,6 +5,18 @@ import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { LIGHT, DARK } from "./theme";
+import { daysLeft } from "./lib/expiry";
+
+// Default ordered category list. Order = grid display order.
+// Top shelf: slots 0-1 (showUnit). Middle shelf: slots 2-4. WideDrawer: slot 5.
+export const DEFAULT_CATEGORIES = [
+  { key: "dairy",  label: "Dairy",      skinId: "dairy",  icon: "dairy",  hidden: false },
+  { key: "other",  label: "Other",      skinId: "other",  icon: "other",  hidden: false },
+  { key: "cheese", label: "Cheese",     skinId: "cheese", icon: "cheese", hidden: false },
+  { key: "meat",   label: "Meat",       skinId: "meat",   icon: "meat",   hidden: false },
+  { key: "soup",   label: "Soup",       skinId: "soup",   icon: "soup",   hidden: false },
+  { key: "veg",    label: "Vegetables", skinId: "veg",    icon: "veg",    hidden: false },
+];
 
 const KEY_ITEMS = "pekko.items.v1";
 const KEY_SETTINGS = "pekko.settings.v1";
@@ -18,7 +30,8 @@ const DEFAULT_SETTINGS = {
   notifyDays: 2,
   autoRemoveDays: 7, // delete items this many days after they expire
   fridgeName: DEFAULT_FRIDGE_NAME,
-  binOrder: ["cheese", "dairy", "meat", "packaged", "veg", "other"],
+  rescued: 0,          // count of items removed before/on expiry date
+  categories: DEFAULT_CATEGORIES, // ordered list — replaces retired binOrder
   onboarded: false,
 };
 
@@ -58,6 +71,9 @@ export function AppProvider({ children }) {
         load(KEY_ITEMS, []),
       ]);
       const merged = { ...DEFAULT_SETTINGS, ...s };
+      // Migrate: ensure categories array (upgrade from versions using binOrder).
+      if (!Array.isArray(merged.categories)) merged.categories = DEFAULT_CATEGORIES;
+      delete merged.binOrder; // retired in favour of categories order
       setSettings(merged);
       // migrate retired "packaged" category → "other"
       const migrated = (Array.isArray(it) ? it : []).map((i) =>
@@ -124,6 +140,8 @@ export function AppProvider({ children }) {
     setItems((prev) => {
       const target = prev.find((i) => i.id === id);
       if (target?.notifId) Notifications.cancelScheduledNotificationAsync(target.notifId).catch(() => {});
+      const d = target?.exp ? daysLeft(target.exp) : null;
+      if (d !== null && d >= 0) setSettings((s) => ({ ...s, rescued: (s.rescued || 0) + 1 }));
       return prev.filter((i) => i.id !== id);
     });
   }, []);

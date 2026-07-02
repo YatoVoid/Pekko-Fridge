@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { RADIUS, SPACE, catOf, catColors } from "../theme";
+import { RADIUS, SPACE, resolveCat, catColors } from "../theme";
+import { useApp } from "../store";
 import { CategoryIcon } from "./FoodIcons";
 import { ExpiryBadge } from "./ui";
 import { formatDate } from "../lib/expiry";
@@ -12,6 +13,7 @@ import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
 
 export default function ItemDetail({ item, palette, region, onClose, onUpdate, onRemove }) {
+  const { settings } = useApp();
   const [editingName, setEditingName] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -23,7 +25,7 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
   if (!item) return <SwipeSheet visible={false} onClose={onClose} palette={palette}><View /></SwipeSheet>;
 
   const photos = photosOf(item);
-  const cat = catOf(item.category);
+  const cat = resolveCat(item.category, settings.categories);
   const cc = catColors(cat, palette.mode);
 
   const addPhoto = async (fromLibrary) => {
@@ -40,7 +42,7 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
     <SwipeSheet visible={!!item} onClose={onClose} palette={palette}>
       <View style={s.head}>
         <View style={[s.chip, { backgroundColor: cc.tint }]}>
-          <CategoryIcon catKey={cat.key} size={20} />
+          <CategoryIcon catKey={cat.icon || cat.key} size={20} />
           <Text style={[s.chipText, { color: cc.ink }]}>{cat.label}</Text>
         </View>
         <ExpiryBadge exp={item.exp} palette={palette} />

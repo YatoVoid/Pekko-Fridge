@@ -1,4 +1,4 @@
-// Local date-parsing engine (v2). Pure JS, node-testable.
+﻿// Local date-parsing engine (v2). Pure JS, node-testable.
 // Handles the messy reality of food labels: numeric dates in any region order,
 // written-out months, month/year-only "best before", keywords on a separate
 // line from the date, and multiple dates (manufacture + expiry).
@@ -11,6 +11,9 @@ const MONTHS = {
 // Keyword groups (case-insensitive). Japanese included (Kawaii/JP-first).
 const EXP_WORDS = /(exp(?:iry|ires|iration)?|\bbbd?\b|\bbbe\b|best\s*before(?:\s*end)?|use\s*by|sell\s*by|consume\s*by|valid\s*(?:until|to)|\bed\b|expir)|賞味期限|消費期限/i;
 const MFG_WORDS = /(mfg|mfd|\bmd\b|\bpd\b|prod(?:uced)?|packed|\bpkd\b|manufactured?|made(?:\s*on)?)|製造|加工/i;
+// Lines that look like expiry/lot phrases without a digit (German, French, Dutch, etc.)
+// — used to prevent label lines from being mistaken for a product name.
+const NAME_STOP = /(mindestens\s*haltbar(\s*bis)?|haltbar\s*bis|zu\s*verbrauchen\s*bis|best\s*before(\s*end)?|use\s*by|sell\s*by|consume\s*by|exp(?:iry|ires|iration)?|\bbbe?\b|\bbbd\b|\bed\b|\blot\b|\bl\d+\b|à\s*consommer|de\s*préférence\s*avant|verbruiken\s*voor|da\s*consumarsi|consumir\s*antes|賞味期限|消費期限|製造)/i;
 
 function fullYear(y) {
   const n = Number(y);
@@ -146,9 +149,15 @@ function parseLabel(rawText, region = "DMY") {
     if (!exp || earliest.getTime() !== exp.getTime()) mfg = earliest;
   }
 
-  const guessName = lines.find(
-    (l) => /[A-Za-z぀-ヿ一-龯]/.test(l) && !/\d/.test(l) && !EXP_WORDS.test(l) && !MFG_WORDS.test(l)
-  ) || null;
+  function looksLikeName(l) {
+    if (!/[A-Za-z぀-ヿ一-龯]/.test(l)) return false;
+    if (/\d/.test(l)) return false;
+    if (EXP_WORDS.test(l)) return false;
+    if (MFG_WORDS.test(l)) return false;
+    if (NAME_STOP.test(l)) return false;
+    return (l.match(/[A-Za-z぀-ヿ一-龯]/g) || []).length >= 2;
+  }
+  const guessName = lines.find(looksLikeName) || null;
 
   return { exp, mfg, candidates: cands.map((c) => c.t), guessName };
 }

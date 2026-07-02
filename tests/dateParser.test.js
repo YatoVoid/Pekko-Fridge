@@ -80,4 +80,28 @@ assert.deepStrictEqual(parseLabel(null), { exp: null, mfg: null, candidates: [],
 r = parseLabel("Hokkaido Butter\nEXP 2026/08/01", "YMD");
 assert.strictEqual(r.guessName, "Hokkaido Butter", "name guess");
 
+// --- NAME_STOP / looksLikeName tests ---
+// German expiry phrase (no digits) must NOT become guessName
+r = parseLabel("mindestens haltbar bis:\n16.09.2026 110\nL17 02:53", "DMY");
+assert.strictEqual(r.guessName, null, "German haltbar bis blocked by NAME_STOP");
+
+// Normal brand line before a best-before → brand returned
+r = parseLabel("Vollmilch\nbest before 12/2026", "DMY");
+assert.strictEqual(r.guessName, "Vollmilch", "brand before best-before");
+
+// EXP_WORDS phrase on its own line, no digits → still null (caught by EXP_WORDS/NAME_STOP)
+r = parseLabel("BEST BEFORE END\nJUN 2027", "MDY");
+assert.strictEqual(r.guessName, null, "BEST BEFORE END not a name");
+
+// Real brand + lot code with digits + EXP line → brand returned
+r = parseLabel("Cheddar\nLOT L2231\nEXP 01 03 27", "DMY");
+assert.strictEqual(r.guessName, "Cheddar", "brand before LOT+EXP lines");
+
+// Pinning test: parseLabel of "16.09.2026" must return Sept 16, not Sept 17
+r = parseLabel("16.09.2026", "DMY");
+assert.ok(r.exp, "16.09.2026 parse returns a date");
+assert.strictEqual(r.exp.getFullYear(), 2026, "pinning: year 2026");
+assert.strictEqual(r.exp.getMonth(), 8, "pinning: month index 8 = September");
+assert.strictEqual(r.exp.getDate(), 16, "pinning: day 16");
+
 console.log("✓ all dateParser tests passed");

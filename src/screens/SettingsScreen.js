@@ -1,9 +1,10 @@
-import React from "react";
-import { View, Text, Switch, Pressable, ScrollView, TextInput, StyleSheet, Linking } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, Text, Switch, Pressable, ScrollView, TextInput, StyleSheet, Linking, PanResponder } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { useApp } from "../store";
-import { RADIUS, SPACE } from "../theme";
+import { useApp, DEFAULT_CATEGORIES } from "../store";
+import { CATEGORY_SKINS, RADIUS, SPACE } from "../theme";
+import { CategoryIcon } from "../components/FoodIcons";
 
 function Segmented({ options, value, onChange, palette }) {
   return (
@@ -116,9 +117,17 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
+      <FoldersCard palette={palette} settings={settings} updateSettings={updateSettings} />
+
       <Text style={[s.footer, { color: palette.textSoft }]}>
         Pekko runs 100% on this phone. No accounts, no cloud, no tracking.
       </Text>
+
+      {(settings.rescued > 0) && (
+        <Text style={[s.footer, { color: palette.textSoft }]}>
+          You've rescued {settings.rescued} item{settings.rescued === 1 ? "" : "s"} so far.
+        </Text>
+      )}
 
       <Pressable
         onPress={() => {
@@ -145,6 +154,195 @@ function Step({ label, onPress, palette }) {
     </Pressable>
   );
 }
+
+// ── Folders card ─────────────────────────────────────────────────────────────
+
+const ROW_H = 56; // fixed height lets PanResponder compute integer offsets
+
+function FolderRow({ cat, index, catsRef, palette, updateSettings, onToggleHidden, onRename }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(cat.label);
+  // Stable refs so PanResponder closure never goes stale.
+  const indexRef = useRef(index);
+  indexRef.current = index;
+
+  const pan = useRef(
+    PanResponder.create({
+      // Grab-on-touch (per CLAUDE.md): handle has no tappable children.
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      },
+      onPanResponderRelease: (_e, g) => {
+        const i = indexRef.current;
+        const cats = catsRef.current;
+        const offset = Math.round(g.dy / ROW_H);
+        if (offset === 0) return;
+        const newIdx = Math.max(0, Math.min(cats.length - 1, i + offset));
+        if (newIdx !== i) {
+          const newCats = [...cats];
+          const [moved] = newCats.splice(i, 1);
+          newCats.splice(newIdx, 0, moved);
+          updateSettings({ categories: newCats });
+        }
+      },
+      onPanResponderTerminate: () => {},
+    })
+  ).current;
+
+  const commitRename = () => {
+    onRename(draft.trim() || cat.label);
+    setEditing(false);
+  };
+  const canHide = cat.key !== "other"; // "Other" is always visible (catches orphaned items)
+
+  return (
+    <View style={[fr.row, { borderColor: palette.line, height: ROW_H }]}>
+      {/* Drag handle — grab-on-touch */}
+      <View {...pan.panHandlers} style={fr.handle}>
+        <Text style={[fr.handleIcon, { color: palette.textSoft }]}>⠿</Text>
+      </View>
+
+      {editing ? (
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onBlur={commitRename}
+          onSubmitEditing={commitRename}
+          autoFocus
+          maxLength={24}
+          style={[fr.renameInput, { color: palette.text, borderColor: palette.accent, backgroundColor: palette.surfaceAlt }]}
+        />
+      ) : (
+        <Pressable style={fr.labelArea} onPress={() => { setDraft(cat.label); setEditing(true); }}>
+          <CategoryIcon catKey={cat.icon || cat.key} size={18} />
+          <Text style={[fr.rowLabel, { color: cat.hidden ? palette.textSoft : palette.text }]}>{cat.label}</Text>
+          <Text style={[fr.editHint, { color: palette.accent }]}>Edit</Text>
+        </Pressable>
+      )}
+
+      {canHide ? (
+        <Switch
+          value={!cat.hidden}
+          onValueChange={onToggleHidden}
+          trackColor={{ true: palette.accent, false: palette.line }}
+          thumbColor="#fff"
+        />
+      ) : (
+        <View style={{ width: 51 }} />
+      )}
+    </View>
+  );
+}
+
+function FoldersCard({ palette, settings, updateSettings }) {
+  const cats = settings.categories || DEFAULT_CATEGORIES;
+  const [addingFolder, setAddingFolder] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newSkinId, setNewSkinId] = useState("other");
+
+  // Stable ref used by FolderRow PanResponder closures.
+  const catsRef = useRef(cats);
+  catsRef.current = cats;
+
+  const toggleHidden = (key) => {
+    updateSettings({ categories: catsRef.current.map((c) => c.key === key ? { ...c, hidden: !c.hidden } : c) });
+  };
+  const rename = (key, label) => {
+    updateSettings({ categories: catsRef.current.map((c) => c.key === key ? { ...c, label } : c) });
+  };
+  const addFolder = () => {
+    if (!newLabel.trim()) return;
+    Haptics.selectionAsync().catch(() => {});
+    const newCat = { key: String(Date.now()), label: newLabel.trim(), skinId: newSkinId, icon: "other", hidden: false };
+    updateSettings({ categories: [...catsRef.current, newCat] });
+    setNewLabel("");
+    setNewSkinId("other");
+    setAddingFolder(false);
+  };
+
+  return (
+    <View style={[s.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+      <Text style={[s.cardTitle, { color: palette.text }]}>Folders</Text>
+      <Text style={[s.cardSub, { color: palette.textSoft }]}>Reorder, rename, or hide food bins. Drag ⠿ to move.</Text>
+      <View style={{ height: SPACE.md }} />
+
+      {cats.map((cat, index) => (
+        <FolderRow
+          key={cat.key}
+          cat={cat}
+          index={index}
+          catsRef={catsRef}
+          palette={palette}
+          updateSettings={updateSettings}
+          onToggleHidden={() => toggleHidden(cat.key)}
+          onRename={(label) => rename(cat.key, label)}
+        />
+      ))}
+
+      {addingFolder ? (
+        <View style={[fr.addForm, { borderColor: palette.line }]}>
+          <TextInput
+            value={newLabel}
+            onChangeText={setNewLabel}
+            placeholder="Folder name"
+            placeholderTextColor={palette.textSoft}
+            autoFocus
+            maxLength={24}
+            onSubmitEditing={addFolder}
+            style={[fr.addInput, { color: palette.text, backgroundColor: palette.surfaceAlt, borderColor: palette.line }]}
+          />
+          <View style={fr.skinRow}>
+            {CATEGORY_SKINS.map((sk) => {
+              const on = sk.key === newSkinId;
+              return (
+                <Pressable key={sk.key} onPress={() => setNewSkinId(sk.key)}
+                  style={[fr.skinDot, { backgroundColor: sk.tint, borderWidth: on ? 2 : 0, borderColor: palette.accent }]} />
+              );
+            })}
+          </View>
+          <View style={fr.addButtons}>
+            <Pressable onPress={() => { setAddingFolder(false); setNewLabel(""); }}
+              style={[fr.addCancelBtn, { borderColor: palette.line }]}>
+              <Text style={[fr.addCancelText, { color: palette.textSoft }]}>Cancel</Text>
+            </Pressable>
+            <Pressable onPress={addFolder} disabled={!newLabel.trim()}
+              style={[fr.addSaveBtn, { backgroundColor: palette.accent, opacity: newLabel.trim() ? 1 : 0.45 }]}>
+              <Text style={[fr.addSaveText, { color: palette.accentInk }]}>Add</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable onPress={() => setAddingFolder(true)} style={[fr.addBtn, { borderColor: palette.line }]}>
+          <Text style={[fr.addBtnText, { color: palette.textSoft }]}>+ Add folder</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+const fr = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, gap: SPACE.sm },
+  handle: { width: 36, alignItems: "center", justifyContent: "center" },
+  handleIcon: { fontSize: 22, lineHeight: 28 },
+  labelArea: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm, paddingVertical: SPACE.xs },
+  rowLabel: { fontSize: 15.5, fontWeight: "700", flex: 1 },
+  editHint: { fontSize: 12, fontWeight: "700" },
+  renameInput: { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.sm, paddingVertical: 8, fontSize: 15.5, fontWeight: "700" },
+  addBtn: { marginTop: SPACE.md, borderWidth: 1, borderStyle: "dashed", borderRadius: RADIUS.md, paddingVertical: 12, alignItems: "center" },
+  addBtnText: { fontSize: 14, fontWeight: "700" },
+  addForm: { marginTop: SPACE.md, borderWidth: 1, borderRadius: RADIUS.md, padding: SPACE.md, gap: SPACE.sm },
+  addInput: { borderWidth: 1, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.md, paddingVertical: 10, fontSize: 16 },
+  skinRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  skinDot: { width: 28, height: 28, borderRadius: 14 },
+  addButtons: { flexDirection: "row", gap: SPACE.sm, justifyContent: "flex-end" },
+  addCancelBtn: { borderWidth: 1, borderRadius: RADIUS.md, paddingHorizontal: SPACE.md, paddingVertical: 9 },
+  addCancelText: { fontSize: 14, fontWeight: "700" },
+  addSaveBtn: { borderRadius: RADIUS.md, paddingHorizontal: SPACE.md, paddingVertical: 9 },
+  addSaveText: { fontSize: 14, fontWeight: "800" },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   content: { padding: SPACE.lg, paddingTop: SPACE.xl + 12, paddingBottom: 120, gap: SPACE.md },

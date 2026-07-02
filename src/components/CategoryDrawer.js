@@ -13,7 +13,7 @@ export default function CategoryDrawer({ category, items = [], palette, onClose,
   const header = category ? (
     <View style={s.head}>
       <View style={[s.iconChip, { backgroundColor: catColors(category, palette.mode).tint }]}>
-        <CategoryIcon catKey={category.key} size={30} />
+        <CategoryIcon catKey={category.icon || category.key} size={30} />
       </View>
       <View>
         <Text style={[s.title, { color: palette.text }]}>{category.label}</Text>
