@@ -1,7 +1,8 @@
 // Post-scan sheet: shows parsed dates, photos, name + category, saves to fridge.
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet } from "react-native";
-import { CATEGORIES, RADIUS, SPACE, catColors } from "../theme";
+import { RADIUS, SPACE, resolveCat, catColors } from "../theme";
+import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { PrimaryButton } from "./ui";
 import { CategoryIcon } from "./FoodIcons";
 import { formatDate as fmt } from "../lib/expiry";
@@ -44,6 +45,8 @@ function swap68(date) {
 }
 
 export default function SaveSheet({ visible, result, palette, region, onSave, onClose }) {
+  const { settings } = useApp();
+  const folderCats = (settings.categories || DEFAULT_CATEGORIES).filter((c) => !c.hidden);
   const [name, setName] = useState("");
   const [cat, setCat] = useState("other");
   const [photos, setPhotos] = useState([]);
@@ -128,17 +131,18 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
 
       <Text style={[s.field, { color: palette.textSoft }]}>Folder</Text>
       <View style={s.cats}>
-        {CATEGORIES.map((c) => {
+        {folderCats.map((c) => {
           const on = c.key === cat;
-          const cc = catColors(c, palette.mode);
+          const rc = resolveCat(c.key, settings.categories);
+          const cc = catColors(rc, palette.mode);
           return (
             <Pressable
               key={c.key}
               onPress={() => setCat(c.key)}
               style={[s.cat, { backgroundColor: on ? cc.tint : palette.surfaceAlt, borderColor: on ? palette.accent : "transparent" }]}
             >
-              <CategoryIcon catKey={c.key} size={18} />
-              <Text style={[s.catLabel, { color: on ? cc.ink : palette.text }]}>{c.label}</Text>
+              <CategoryIcon catKey={rc.icon || c.key} size={18} />
+              <Text style={[s.catLabel, { color: on ? cc.ink : palette.text }]}>{rc.label}</Text>
             </Pressable>
           );
         })}

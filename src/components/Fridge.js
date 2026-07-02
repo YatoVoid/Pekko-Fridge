@@ -58,7 +58,7 @@ export function Bin({ category, count, onPress, palette, showUnit }) {
         <View style={[s.countPill, { backgroundColor: pillBg(palette.mode) }]}>
           <Text style={[s.countText, { color: c.ink }]}>{showUnit ? `${count} item${count === 1 ? "" : "s"}` : count}</Text>
         </View>
-        <CategoryIcon catKey={category.key} size={46} />
+        <CategoryIcon catKey={category.icon || category.key} size={46} />
         <Text style={[s.binLabel, { color: c.ink }]}>{category.label}</Text>
       </LinearGradient>
     </Pressable>
@@ -78,7 +78,7 @@ export function WideDrawer({ category, count, onPress, palette }) {
         <View style={[s.countPill, { backgroundColor: pillBg(palette.mode) }]}>
           <Text style={[s.countText, { color: c.ink }]}>{count} item{count === 1 ? "" : "s"}</Text>
         </View>
-        <CategoryIcon catKey={category.key} size={66} />
+        <CategoryIcon catKey={category.icon || category.key} size={66} />
         <View style={{ marginLeft: SPACE.md }}>
           <Text style={[s.crisperTitle, { color: c.ink }]}>{category.label}</Text>
           <Text style={[s.crisperSub, { color: c.accent }]}>Crisper drawer · tap to open</Text>

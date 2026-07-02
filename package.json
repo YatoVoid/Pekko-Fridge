@@ -7,7 +7,8 @@
     "start:go": "expo start --go",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "test": "node tests/dateParser.test.js"
+    "test": "node tests/dateParser.test.js && node tests/expiry.test.js",
+    "test:tz": "cross-env TZ=America/New_York node tests/expiry.test.js && cross-env TZ=Asia/Tokyo node tests/expiry.test.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

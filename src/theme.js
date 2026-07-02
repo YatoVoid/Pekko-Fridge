@@ -18,11 +18,42 @@ export const CATEGORIES = [
     dark: { tint: "#3E362B", tintLo: "#312B22", accent: "#D9C3A0", ink: "#DDC9AB" } },
 ];
 
+// Extra skin swatches for user-created categories (appended to the pool).
+const EXTRA_SKINS = [
+  { key: "lavender", tint: "#F0EAFF", tintLo: "#E4D9FF", accent: "#B89FE0", ink: "#5B4480",
+    dark: { tint: "#3A2E58", tintLo: "#2E2445", accent: "#C3A8F0", ink: "#D8C8FF" } },
+  { key: "peach", tint: "#FFF0E8", tintLo: "#FFE3D0", accent: "#FFBE9B", ink: "#9C5833",
+    dark: { tint: "#503020", tintLo: "#3E2418", accent: "#FFBE9B", ink: "#FFD5B8" } },
+  { key: "mint", tint: "#E8FFF4", tintLo: "#D0FDE8", accent: "#80D4AE", ink: "#2E6B4A",
+    dark: { tint: "#1C4532", tintLo: "#142E22", accent: "#8ADFB8", ink: "#A8F0D0" } },
+];
+
+// Full pool of color skins (built-in + extras) used by resolveCat.
+export const CATEGORY_SKINS = [...CATEGORIES, ...EXTRA_SKINS];
+
 // Resolve a category's bin colors for the active theme.
 export function catColors(cat, mode) {
   return mode === "dark" && cat.dark
     ? cat.dark
     : { tint: cat.tint, tintLo: cat.tintLo, accent: cat.accent, ink: cat.ink };
+}
+
+// Dynamic catOf: merges settings.categories entry with CATEGORY_SKINS.
+// Returns an object compatible with Bin/WideDrawer (key, label, icon, tint, tintLo, accent, ink, dark).
+// Falls back to static catOf(key) if settingsCategories is not provided or key is not found.
+export function resolveCat(key, settingsCategories) {
+  const entry = settingsCategories?.find((c) => c.key === key);
+  if (entry) {
+    const skinId = entry.skinId || key;
+    const skin = CATEGORY_SKINS.find((s) => s.key === skinId) || CATEGORIES[5];
+    return {
+      key: entry.key,
+      label: entry.label,
+      icon: entry.icon || entry.key,
+      tint: skin.tint, tintLo: skin.tintLo, accent: skin.accent, ink: skin.ink, dark: skin.dark,
+    };
+  }
+  return catOf(key);
 }
 
 export const DEFAULT_FRIDGE_NAME = "My Fridge";
