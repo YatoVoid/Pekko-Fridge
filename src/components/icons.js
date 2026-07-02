@@ -38,3 +38,15 @@ export function GearIcon({ color, size = 26, active }) {
     </Svg>
   );
 }
+
+// Pencil — "edit this" affordance, same soft line-art language.
+export function EditIcon({ color, size = 26, active }) {
+  const w = active ? 2.4 : 1.9;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M14.6 5.4l4 4" stroke={color} strokeWidth={w} {...base} />
+      <Path d="M4.5 19.5l1-4L15.4 5.6c.8-.8 2.1-.8 2.9 0l.1.1c.8.8.8 2.1 0 2.9L8.5 18.5z"
+        stroke={color} strokeWidth={w} {...base} />
+    </Svg>
+  );
+}

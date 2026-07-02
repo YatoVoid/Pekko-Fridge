@@ -5,13 +5,14 @@ import * as Haptics from "expo-haptics";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { resolveCat, DEFAULT_FRIDGE_NAME, RADIUS, SPACE } from "../theme";
 import { FridgeBody, Shelf, Bin, WideDrawer, ItemRow } from "../components/Fridge";
+import { EditIcon } from "../components/icons";
 import SwipeRow from "../components/SwipeRow";
 import CategoryDrawer from "../components/CategoryDrawer";
 import ItemDetail from "../components/ItemDetail";
 import { daysLeft } from "../lib/expiry";
 
 export default function FridgeScreen() {
-  const { palette, settings, items, removeItem, updateItem, updateSettings } = useApp();
+  const { palette, settings, items, removeItem, updateItem, updateSettings, requestNav } = useApp();
   const insets = useSafeAreaInsets();
   const [drawerKey, setDrawerKey] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -46,6 +47,15 @@ export default function FridgeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: SPACE.xl + 12 }}>
+      <Pressable
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); requestNav(2, "folders"); }}
+        style={[s.editBtn, { backgroundColor: palette.surface, borderColor: palette.line }]}
+        hitSlop={10}
+        accessibilityLabel="Edit fridge folders"
+      >
+        <EditIcon color={palette.textSoft} size={19} />
+      </Pressable>
+
       <View style={s.top}>
         {editing ? (
           <TextInput
@@ -140,6 +150,12 @@ export default function FridgeScreen() {
 }
 
 const s = StyleSheet.create({
+  editBtn: {
+    position: "absolute", right: SPACE.lg, top: SPACE.xs, zIndex: 5,
+    width: 40, height: 40, borderRadius: 20, borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  },
   top: { paddingHorizontal: SPACE.lg, marginBottom: SPACE.md },
   pill: {
     alignSelf: "center", borderRadius: RADIUS.pill, borderWidth: 1,
