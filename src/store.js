@@ -64,11 +64,6 @@ export function AppProvider({ children }) {
   const addOverlay = useCallback(() => setOverlays((n) => n + 1), []);
   const removeOverlay = useCallback(() => setOverlays((n) => Math.max(0, n - 1)), []);
 
-  // Cross-screen navigation intent (e.g. Fridge → Settings, focus Folders).
-  // { tab, focus, id } — id makes each request unique so effects re-fire.
-  const [nav, setNav] = useState(null);
-  const requestNav = useCallback((tab, focus) => setNav({ tab, focus, id: Date.now() }), []);
-
   useEffect(() => {
     (async () => {
       const [s, it] = await Promise.all([
@@ -152,7 +147,7 @@ export function AppProvider({ children }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ ready, palette, settings, updateSettings, items, addItem, updateItem, removeItem, overlayOpen: overlays > 0, addOverlay, removeOverlay, nav, requestNav }}>
+    <Ctx.Provider value={{ ready, palette, settings, updateSettings, items, addItem, updateItem, removeItem, overlayOpen: overlays > 0, addOverlay, removeOverlay }}>
       {children}
     </Ctx.Provider>
   );

@@ -50,3 +50,52 @@ export function EditIcon({ color, size = 26, active }) {
     </Svg>
   );
 }
+
+// Checkmark — "done editing" confirm, pairs with EditIcon in the morphing button.
+export function CheckIcon({ color, size = 26, active }) {
+  const w = active ? 2.6 : 2.2;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 12.5l4.2 4.5L19 6.8" stroke={color} strokeWidth={w} {...base} />
+    </Svg>
+  );
+}
+
+// Plus — "add a folder" tile.
+export function PlusIcon({ color, size = 26 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 5.5v13M5.5 12h13" stroke={color} strokeWidth={2.1} {...base} />
+    </Svg>
+  );
+}
+
+// Close (X) — delete badge on a custom folder tile.
+export function CloseIcon({ color, size = 26 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M7 7l10 10M17 7L7 17" stroke={color} strokeWidth={2.2} {...base} />
+    </Svg>
+  );
+}
+
+// Eye / Eye-off — hide-visibility badge on a built-in folder tile.
+export function EyeIcon({ color, size = 26 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M2.6 12C5.5 7.5 8.6 5.5 12 5.5s6.5 2 9.4 6.5c-2.9 4.5-6 6.5-9.4 6.5S5.5 16.5 2.6 12z"
+        stroke={color} strokeWidth={1.9} {...base} />
+      <Circle cx="12" cy="12" r="2.9" stroke={color} strokeWidth={1.9} {...base} />
+    </Svg>
+  );
+}
+
+export function EyeOffIcon({ color, size = 26 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M2.6 12C5.5 7.5 8.6 5.5 12 5.5c1.2 0 2.4.25 3.5.72M20.2 9.4c.45.5.9 1.06 1.2 1.6-2.9 4.5-6 6.5-9.4 6.5-.9 0-1.8-.14-2.6-.42"
+        stroke={color} strokeWidth={1.9} {...base} />
+      <Path d="M4 4l16 16" stroke={color} strokeWidth={1.9} {...base} />
+    </Svg>
+  );
+}
