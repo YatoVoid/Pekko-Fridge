@@ -30,4 +30,4 @@ Pekko is made by one person, in my own time, and given away for free with no ads
 
 ## Status
 
-Version 1.2.0, built with Expo and React Native for Android.
+Version 1.2.1, built with Expo and React Native for Android.
