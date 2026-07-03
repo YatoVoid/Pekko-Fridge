@@ -1,3 +1,6 @@
+<img width="1024" height="500" alt="feature-1024x500-2-ToolsChimp com" src="https://github.com/user-attachments/assets/17be71b8-c0e8-4e43-8c01-7f63d10381c8" />
+
+
 # Pekko Fridge
 
 Pekko Fridge is a cute, private expiry date tracker for your food. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
