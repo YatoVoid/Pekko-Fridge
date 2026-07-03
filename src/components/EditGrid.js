@@ -192,7 +192,9 @@ function Tile({
         Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6 }).start();
         if (tap) {
           const { tileW: tw } = dimsRef.current;
-          if (badgeRef.current && gr.x > tw - 40 && gr.y < 38) onBadgeRef.current(cat);
+          // Generous invisible hit zone around the corner badge (bigger than the
+          // 28pt circle) so a slightly-off tap still lands on hide/delete.
+          if (badgeRef.current && gr.x > tw - 58 && gr.y < 54) onBadgeRef.current(cat);
           else onRenameRef.current(cat);
           Animated.spring(pos, { toValue: xyRef.current(slotRef.current), useNativeDriver: true, friction: 8, tension: 80 }).start();
         } else {
@@ -212,7 +214,9 @@ function Tile({
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const rotate = wig.interpolate({ inputRange: [-1, 1], outputRange: ["-1.7deg", "1.7deg"] });
+  // Memoized so re-renders (e.g. toggling hide/show) don't hand the transform a
+  // fresh interpolation node, which would re-attach and visibly stutter the wiggle.
+  const rotate = useMemo(() => wig.interpolate({ inputRange: [-1, 1], outputRange: ["-1.7deg", "1.7deg"] }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const dimmed = cat.hidden ? 0.42 : 1;
   // Scale contents to the tile height so short (cramped) tiles never overflow.
   const icWrap = Math.max(28, Math.min(42, tileH - 24));
@@ -321,7 +325,6 @@ const t = StyleSheet.create({
   badge: {
     position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: 14, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
-    shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
   addTile: { borderStyle: "dashed", justifyContent: "center", gap: SPACE.xs },
   addLabel: { fontSize: 14, fontWeight: "800" },

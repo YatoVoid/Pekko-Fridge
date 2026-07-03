@@ -249,7 +249,7 @@ export default function FridgeScreen({ active = true }) {
                 <Shelf palette={palette}>
                   {visibleCats.slice(0, 2).map((cat) => (
                     <Bin key={cat.key} category={rc(cat.key)} count={inCat(cat.key).length}
-                         palette={palette} onPress={setDrawerKey} showUnit />
+                         palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} showUnit />
                   ))}
                 </Shelf>
               )}
@@ -257,19 +257,19 @@ export default function FridgeScreen({ active = true }) {
                 <Shelf palette={palette}>
                   {visibleCats.slice(2, 5).map((cat) => (
                     <Bin key={cat.key} category={rc(cat.key)} count={inCat(cat.key).length}
-                         palette={palette} onPress={setDrawerKey} />
+                         palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} />
                   ))}
                 </Shelf>
               )}
               {visibleCats[5] && (
                 <WideDrawer category={rc(visibleCats[5].key)} count={inCat(visibleCats[5].key).length}
-                            palette={palette} onPress={setDrawerKey} />
+                            palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} />
               )}
               {visibleCats.slice(6).length > 0 && (
                 <Shelf palette={palette}>
                   {visibleCats.slice(6).map((cat) => (
                     <Bin key={cat.key} category={rc(cat.key)} count={inCat(cat.key).length}
-                         palette={palette} onPress={setDrawerKey} />
+                         palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} />
                   ))}
                 </Shelf>
               )}

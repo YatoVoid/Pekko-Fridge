@@ -1,7 +1,7 @@
 // Single source of truth: settings + fridge items, persisted to AsyncStorage.
 // One provider, hook accessors — no prop lists threaded through screens.
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useColorScheme } from "react-native";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import { useColorScheme, Alert, Platform, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { LIGHT, DARK } from "./theme";
@@ -33,7 +33,11 @@ const DEFAULT_SETTINGS = {
   rescued: 0,          // count of items removed before/on expiry date
   categories: DEFAULT_CATEGORIES, // ordered list — replaces retired binOrder
   onboarded: false,
+  batteryPromptShown: false, // one-time "exclude from battery optimization" nudge (Android)
 };
+
+// Notification action category — gives each reminder "Mark eaten" / "Snooze 2 days" buttons.
+const REMINDER_CATEGORY = "pekko-reminder";
 
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
@@ -63,6 +67,32 @@ export function AppProvider({ children }) {
   const [overlays, setOverlays] = useState(0); // open sheets/modals (freezes page swipe)
   const addOverlay = useCallback(() => setOverlays((n) => n + 1), []);
   const removeOverlay = useCallback(() => setOverlays((n) => Math.max(0, n - 1)), []);
+
+  // Latest state/handlers for the notification-response listener (registered once).
+  const settingsRef = useRef(settings); settingsRef.current = settings;
+  const itemsRef = useRef(items); itemsRef.current = items;
+  const removeItemRef = useRef(null);
+  const snoozeItemRef = useRef(null);
+
+  // Register the reminder action buttons once.
+  useEffect(() => {
+    Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY, [
+      { identifier: "eaten", buttonTitle: "Mark eaten", options: { opensAppToForeground: true } },
+      { identifier: "snooze", buttonTitle: "Snooze 2 days", options: { opensAppToForeground: true } },
+    ]).catch(() => {});
+  }, []);
+
+  // Handle taps on a reminder's action buttons.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
+      const action = resp.actionIdentifier;
+      const itemId = resp.notification?.request?.content?.data?.itemId;
+      if (!itemId) return;
+      if (action === "eaten") removeItemRef.current?.(itemId);
+      else if (action === "snooze") snoozeItemRef.current?.(itemId);
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -117,6 +147,8 @@ export function AppProvider({ children }) {
         content: {
           title: "Rescue your food",
           body: `${item.name} expires in ${settings.notifyDays} day${settings.notifyDays === 1 ? "" : "s"}.`,
+          categoryIdentifier: REMINDER_CATEGORY, // adds Mark eaten / Snooze buttons
+          data: { itemId: item.id },
         },
         // SDK 56 wants a typed trigger, not a bare Date.
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
@@ -126,11 +158,51 @@ export function AppProvider({ children }) {
     }
   }, [settings.notify, settings.notifyDays]);
 
+  // One-time nudge (Android only) to exclude Pekko from battery optimization, so
+  // aggressive OEM battery managers don't silently kill scheduled reminders.
+  const maybeBatteryPrompt = useCallback(() => {
+    if (Platform.OS !== "android" || settingsRef.current.batteryPromptShown) return;
+    setSettings((s) => ({ ...s, batteryPromptShown: true }));
+    Alert.alert(
+      "Keep reminders on time",
+      "Some phones pause background apps and can delay or drop reminders. For alerts that always arrive, allow Pekko to run without battery restrictions.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Open settings", onPress: () => Linking.openSettings().catch(() => {}) },
+      ],
+    );
+  }, []);
+
   const addItem = useCallback(async (item) => {
     const full = { id: String(Date.now()), createdAt: Date.now(), photos: [], ...item };
     full.notifId = await scheduleReminder(full);
     setItems((prev) => [full, ...prev]);
-  }, [scheduleReminder]);
+    if (full.notifId) maybeBatteryPrompt(); // first real reminder → nudge once
+  }, [scheduleReminder, maybeBatteryPrompt]);
+
+  // Snooze: reschedule this item's reminder for ~2 days from now.
+  const snoozeItem = useCallback(async (id) => {
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (!item) return;
+    if (item.notifId) Notifications.cancelScheduledNotificationAsync(item.notifId).catch(() => {});
+    const when = new Date();
+    when.setDate(when.getDate() + 2);
+    when.setHours(9, 0, 0, 0);
+    let notifId = null;
+    try {
+      notifId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Rescue your food",
+          body: `${item.name} — snoozed reminder.`,
+          categoryIdentifier: REMINDER_CATEGORY,
+          data: { itemId: id },
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
+      });
+    } catch {}
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notifId } : i)));
+  }, []);
+  snoozeItemRef.current = snoozeItem;
 
   const updateItem = useCallback((id, patch) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -145,6 +217,7 @@ export function AppProvider({ children }) {
       return prev.filter((i) => i.id !== id);
     });
   }, []);
+  removeItemRef.current = removeItem;
 
   return (
     <Ctx.Provider value={{ ready, palette, settings, updateSettings, items, addItem, updateItem, removeItem, overlayOpen: overlays > 0, addOverlay, removeOverlay }}>

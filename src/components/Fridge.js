@@ -47,11 +47,13 @@ function press({ pressed }) {
 }
 
 // A drawer bin sitting on a shelf.
-export function Bin({ category, count, onPress, palette, showUnit }) {
+export function Bin({ category, count, onPress, onLongPress, palette, showUnit }) {
   const c = catColors(category, palette.mode);
   return (
     <Pressable
       onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(category.key); }}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       style={({ pressed }) => [s.binWrap, ...press({ pressed })]}
     >
       <LinearGradient colors={[c.tint, c.tintLo]} style={[s.bin, { shadowColor: c.accent }]}>
@@ -66,11 +68,13 @@ export function Bin({ category, count, onPress, palette, showUnit }) {
 }
 
 // Wide crisper drawer (Vegetables).
-export function WideDrawer({ category, count, onPress, palette }) {
+export function WideDrawer({ category, count, onPress, onLongPress, palette }) {
   const c = catColors(category, palette.mode);
   return (
     <Pressable
       onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(category.key); }}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       style={({ pressed }) => [{ flex: 1.55 }, ...press({ pressed })]}
     >
       <LinearGradient colors={[c.tint, c.tintLo]} style={[s.crisper, { shadowColor: c.accent }]}>
