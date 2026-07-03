@@ -38,8 +38,7 @@
         {
           "photosPermission": "Pekko lets you attach photos of your food. They stay on your phone."
         }
-      ],
-      "@react-native-community/datetimepicker"
+      ]
     ],
     "extra": {
       "eas": {
