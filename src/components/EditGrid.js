@@ -4,7 +4,7 @@
 // delete (custom folders), tap the dashed "+" tile to add. Data is committed to
 // the store on every change, so it is always persisted — see FridgeScreen.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, TextInput, Animated, PanResponder, StyleSheet } from "react-native";
+import { View, Text, TextInput, Animated, PanResponder, Keyboard, Dimensions, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { resolveCat, catColors, RADIUS, SPACE } from "../theme";
 import { CategoryIcon } from "./FoodIcons";
@@ -42,6 +42,34 @@ export default function EditGrid({
     if (!dragRef.current) setOrder(cats.map((c) => c.key));
   }, [cats]);
 
+  // Keyboard avoidance: the grid is absolutely positioned (no ScrollView), so when
+  // renaming a lower tile the keyboard covers it. Lift the whole grid just enough
+  // to clear the keyboard for the tile being renamed.
+  const rootRef = useRef(null);
+  const lift = useRef(new Animated.Value(0)).current;
+  const renamingKeyRef = useRef(renamingKey);
+  renamingKeyRef.current = renamingKey;
+
+  useEffect(() => {
+    const onShow = (e) => {
+      if (!renamingKeyRef.current) return;
+      const kbTop = Dimensions.get("window").height - e.endCoordinates.height;
+      requestAnimationFrame(() => {
+        rootRef.current?.measureInWindow((_x, y) => {
+          const slot = orderRef.current.indexOf(renamingKeyRef.current);
+          if (slot < 0) return;
+          const tileBottom = y + xy(slot).y + tileH; // measure is pre-transform (base) Y
+          const overlap = tileBottom - kbTop + 20;
+          Animated.timing(lift, { toValue: overlap > 0 ? -overlap : 0, duration: 220, useNativeDriver: true }).start();
+        });
+      });
+    };
+    const onHide = () => Animated.timing(lift, { toValue: 0, duration: 180, useNativeDriver: true }).start();
+    const s1 = Keyboard.addListener("keyboardDidShow", onShow);
+    const s2 = Keyboard.addListener("keyboardDidHide", onHide);
+    return () => { s1.remove(); s2.remove(); };
+  }, [tileW, tileH]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const moveTo = (key, toIdx) => {
     setOrder((prev) => {
       const from = prev.indexOf(key);
@@ -58,7 +86,7 @@ export default function EditGrid({
   };
 
   return (
-    <View style={{ width, height }}>
+    <Animated.View ref={rootRef} style={{ width, height, transform: [{ translateY: lift }] }}>
       {cats.map((cat, ci) => (
         <Tile
           key={cat.key}
@@ -94,7 +122,7 @@ export default function EditGrid({
           onAdd={onAdd}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
