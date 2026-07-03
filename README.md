@@ -74,6 +74,10 @@ src/
 
 Version 1.2.1, built with Expo and React Native for Android.
 
+## License
+
+Copyright 2026 Wali Lambert. All rights reserved. The code is public so you can read it (it is part of my portfolio), but it is not open source. Please do not copy, reuse, or publish it, or any version of it, without my permission. See the LICENSE file for details.
+
 ## Support
 
 Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little food or money, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
