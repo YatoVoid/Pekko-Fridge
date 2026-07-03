@@ -60,8 +60,18 @@ export function Bin({ category, count, onPress, onLongPress, palette, showUnit }
         <View style={[s.countPill, { backgroundColor: pillBg(palette.mode) }]}>
           <Text style={[s.countText, { color: c.ink }]}>{showUnit ? `${count} item${count === 1 ? "" : "s"}` : count}</Text>
         </View>
-        <CategoryIcon catKey={category.icon || category.key} size={46} />
-        <Text style={[s.binLabel, { color: c.ink }]}>{category.label}</Text>
+        <View style={s.binBody}>
+          <CategoryIcon catKey={category.icon || category.key} size={46} />
+          <Text
+            style={[s.binLabel, { color: c.ink }]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            {category.label}
+          </Text>
+        </View>
       </LinearGradient>
     </Pressable>
   );
@@ -127,15 +137,16 @@ const s = StyleSheet.create({
   shelf: { borderRadius: RADIUS.md + 2, padding: SPACE.sm + 2, flexDirection: "row", gap: SPACE.sm + 2 },
   binWrap: { flex: 1 },
   bin: {
-    flex: 1, borderRadius: RADIUS.md, padding: SPACE.md, justifyContent: "space-between",
+    flex: 1, borderRadius: RADIUS.md, padding: SPACE.md, overflow: "hidden",
     shadowOpacity: 0.5, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 3, minHeight: 92,
   },
+  binBody: { flex: 1, justifyContent: "center", paddingBottom: 8 },
   countPill: {
     position: "absolute", top: 8, right: 8, backgroundColor: "rgba(255,255,255,0.85)",
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill,
   },
   countText: { fontSize: 11, fontWeight: "800" },
-  binLabel: { fontSize: 17, fontWeight: "800", marginTop: SPACE.sm, marginBottom: 20, letterSpacing: 0.2 },
+  binLabel: { fontSize: 17, lineHeight: 20, fontWeight: "800", marginTop: 6, letterSpacing: 0.2 },
   crisper: {
     flex: 1, borderRadius: RADIUS.md + 2, paddingHorizontal: SPACE.lg, flexDirection: "row", alignItems: "center",
     shadowOpacity: 0.5, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 3,
