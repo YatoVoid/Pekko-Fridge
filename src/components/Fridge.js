@@ -135,7 +135,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill,
   },
   countText: { fontSize: 11, fontWeight: "800" },
-  binLabel: { fontSize: 17, fontWeight: "800", marginTop: SPACE.sm, marginBottom: 5, letterSpacing: 0.2 },
+  binLabel: { fontSize: 17, fontWeight: "800", marginTop: SPACE.sm, marginBottom: 20, letterSpacing: 0.2 },
   crisper: {
     flex: 1, borderRadius: RADIUS.md + 2, paddingHorizontal: SPACE.lg, flexDirection: "row", alignItems: "center",
     shadowOpacity: 0.5, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 3,
