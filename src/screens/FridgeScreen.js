@@ -164,11 +164,14 @@ export default function FridgeScreen({ active = true }) {
       { scale: editA.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
     ],
   };
-  // The edit layer is OPAQUE (its own bg) and simply fades in over the static
-  // fridge — a clean single fade, no cross-dissolve gray. A subtle scale gives depth.
+  // Sequenced crossfade over an OPAQUE stage: the fridge (and its heavy bin
+  // shadows) fades OUT first, then the tiles fade IN — so the fridge's shadows
+  // never bleed through a half-transparent overlay (that was the dark halo).
+  const bodyStyle = {
+    opacity: editA.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0], extrapolate: "clamp" }),
+  };
   const gridStyle = {
-    opacity: editA,
-    backgroundColor: palette.bg,
+    opacity: editA.interpolate({ inputRange: [0.3, 1], outputRange: [0, 1], extrapolate: "clamp" }),
     transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1.03, 1] }) }],
   };
   const soonStyle = { opacity: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) };
@@ -239,8 +242,8 @@ export default function FridgeScreen({ active = true }) {
       )}
 
       <View style={[s.cavityPad, { paddingBottom: insets.bottom + SPACE.md }]}>
-        <View style={s.stage} onLayout={(e) => setGridArea(e.nativeEvent.layout)}>
-          <View style={StyleSheet.absoluteFill} pointerEvents={editing ? "none" : "auto"}>
+        <View style={[s.stage, { backgroundColor: palette.bg }]} onLayout={(e) => setGridArea(e.nativeEvent.layout)}>
+          <Animated.View style={[StyleSheet.absoluteFill, bodyStyle]} pointerEvents={editing ? "none" : "auto"}>
             <FridgeBody palette={palette}>
               {visibleCats.slice(0, 2).length > 0 && (
                 <Shelf palette={palette}>
@@ -271,7 +274,7 @@ export default function FridgeScreen({ active = true }) {
                 </Shelf>
               )}
             </FridgeBody>
-          </View>
+          </Animated.View>
 
           {showGrid && gridArea && (
             <Animated.View style={[StyleSheet.absoluteFill, gridStyle]} pointerEvents={editing ? "auto" : "none"}>

@@ -229,9 +229,11 @@ function Tile({
           position: "absolute", width: tileW, height: tileH,
           backgroundColor: palette.surface, borderColor: c.accent,
           zIndex: isDragging ? 20 : 1,
-          shadowColor: "#000", shadowOpacity: isDragging ? 0.18 : 0.05,
-          shadowRadius: isDragging ? 14 : 6, shadowOffset: { width: 0, height: isDragging ? 8 : 2 },
-          elevation: isDragging ? 8 : 2,
+          // Resting tiles are flat (border gives definition); only the lifted tile
+          // casts a shadow — avoids dark shadow artifacts during the fade transition.
+          shadowColor: "#000", shadowOpacity: isDragging ? 0.18 : 0,
+          shadowRadius: isDragging ? 14 : 0, shadowOffset: { width: 0, height: isDragging ? 8 : 0 },
+          elevation: isDragging ? 8 : 0,
           transform: [{ translateX: pos.x }, { translateY: pos.y }, { rotate }, { scale }],
         },
       ]}
