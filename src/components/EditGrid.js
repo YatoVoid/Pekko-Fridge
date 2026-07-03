@@ -15,14 +15,14 @@ const COLS = 2;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 export default function EditGrid({
-  cats, allCats, palette, width, height, defaultKeys,
+  cats, palette, width, height, defaultKeys, editing, canAdd,
   renamingKey, renameDraft, setRenameDraft,
   onStartRename, onCommitRename, onReorder, onBadge, onAdd,
 }) {
   const tileW = (width - GAP) / COLS;
-  const count = cats.length + 1; // +1 for the "add" tile
-  const rows = Math.ceil(count / COLS);
-  const tileH = clamp(Math.floor((height - (rows - 1) * GAP) / rows), 58, 92);
+  const count = cats.length + (canAdd ? 1 : 0); // +1 for the "add" tile
+  const rows = Math.max(1, Math.ceil(count / COLS));
+  const tileH = clamp(Math.floor((height - (rows - 1) * GAP) / rows), 62, 92);
 
   const xy = useMemo(
     () => (i) => ({ x: (i % COLS) * (tileW + GAP), y: Math.floor(i / COLS) * (tileH + GAP) }),
@@ -69,6 +69,7 @@ export default function EditGrid({
           slotIndex={order.indexOf(cat.key) < 0 ? ci : order.indexOf(cat.key)}
           rows={rows}
           realCount={cats.length}
+          editing={editing}
           isDragging={dragKey === cat.key}
           isRenaming={renamingKey === cat.key}
           hasBadge={cat.key !== "other"}
@@ -84,19 +85,21 @@ export default function EditGrid({
           commit={commit}
         />
       ))}
-      <AddTile
-        palette={palette}
-        tileW={tileW}
-        tileH={tileH}
-        pos={xy(cats.length)}
-        onAdd={onAdd}
-      />
+      {canAdd && (
+        <AddTile
+          palette={palette}
+          tileW={tileW}
+          tileH={tileH}
+          pos={xy(cats.length)}
+          onAdd={onAdd}
+        />
+      )}
     </View>
   );
 }
 
 function Tile({
-  cat, palette, tileW, tileH, slotIndex, rows, realCount, isDragging, isRenaming,
+  cat, palette, tileW, tileH, slotIndex, rows, realCount, editing, isDragging, isRenaming,
   hasBadge, isCustom, xy, renameDraft, setRenameDraft, onCommitRename, onStartRename,
   onBadge, setDragKey, moveTo, commit,
 }) {
@@ -131,9 +134,11 @@ function Tile({
     Animated.spring(pos, { toValue: xy(slotIndex), useNativeDriver: true, friction: 8, tension: 80 }).start();
   }, [slotIndex, tileW, tileH]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wiggle loop — staggered per slot, paused while dragging or renaming.
+  // Wiggle loop — staggered per slot. Runs ONLY in edit mode (stops the instant
+  // edit mode ends, so tiles fade out static instead of flickering during the
+  // transition); also paused while dragging or renaming.
   useEffect(() => {
-    if (isDragging || isRenaming) { wig.setValue(0); return; }
+    if (!editing || isDragging || isRenaming) { wig.stopAnimation(() => wig.setValue(0)); return; }
     let loop;
     const t = setTimeout(() => {
       loop = Animated.loop(
@@ -145,8 +150,8 @@ function Tile({
       );
       loop.start();
     }, (slotIndex % 4) * 60);
-    return () => { clearTimeout(t); loop && loop.stop(); wig.setValue(0); };
-  }, [isDragging, isRenaming]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { clearTimeout(t); loop && loop.stop(); };
+  }, [editing, isDragging, isRenaming]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pan = useMemo(
     () => PanResponder.create({
@@ -209,6 +214,11 @@ function Tile({
 
   const rotate = wig.interpolate({ inputRange: [-1, 1], outputRange: ["-1.7deg", "1.7deg"] });
   const dimmed = cat.hidden ? 0.42 : 1;
+  // Scale contents to the tile height so short (cramped) tiles never overflow.
+  const icWrap = Math.max(28, Math.min(42, tileH - 24));
+  const glyph = Math.round(icWrap * 0.62);
+  const lines = tileH < 74 ? 1 : 2;
+  const fontSize = tileH < 74 ? 14.5 : 15.5;
 
   return (
     <Animated.View
@@ -227,8 +237,8 @@ function Tile({
       ]}
     >
       <View style={[t.inner, { opacity: dimmed }]}>
-        <View style={[t.iconWrap, { backgroundColor: c.tint }]}>
-          <CategoryIcon catKey={cat.icon || cat.key} size={26} />
+        <View style={[t.iconWrap, { width: icWrap, height: icWrap, backgroundColor: c.tint }]}>
+          <CategoryIcon catKey={cat.icon || cat.key} size={glyph} />
         </View>
         {isRenaming ? (
           <TextInput
@@ -242,10 +252,10 @@ function Tile({
             returnKeyType="done"
             placeholder="Name"
             placeholderTextColor={palette.textSoft}
-            style={[t.input, { color: palette.text, borderColor: c.accent, backgroundColor: palette.surfaceAlt }]}
+            style={[t.input, { color: palette.text, borderColor: c.accent, backgroundColor: palette.surfaceAlt, fontSize }]}
           />
         ) : (
-          <Text numberOfLines={2} style={[t.label, { color: palette.text }]}>{cat.label}</Text>
+          <Text numberOfLines={lines} style={[t.label, { color: palette.text, fontSize }]}>{cat.label}</Text>
         )}
       </View>
 
@@ -302,10 +312,10 @@ const t = StyleSheet.create({
     paddingHorizontal: SPACE.sm + 2, paddingVertical: SPACE.sm,
     flexDirection: "row", alignItems: "center", gap: SPACE.sm,
   },
-  inner: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm },
-  iconWrap: { width: 42, height: 42, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
-  label: { flex: 1, fontSize: 15.5, fontWeight: "800", letterSpacing: 0.2 },
-  input: { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.sm, paddingVertical: 6, fontSize: 15.5, fontWeight: "800" },
+  inner: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm, overflow: "hidden" },
+  iconWrap: { borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
+  label: { flex: 1, fontWeight: "800", letterSpacing: 0.2 },
+  input: { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.sm, paddingVertical: 6, fontWeight: "800" },
   badge: {
     position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: 14, borderWidth: 1,
     alignItems: "center", justifyContent: "center",

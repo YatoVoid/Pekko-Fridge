@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, TextInput, Pressable, Animated, Alert, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, Animated, Alert, Easing, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
@@ -13,6 +13,7 @@ import EditGrid from "../components/EditGrid";
 import { daysLeft } from "../lib/expiry";
 
 const DEFAULT_KEYS = new Set(DEFAULT_CATEGORIES.map((c) => c.key));
+const MAX_FOLDERS = 9; // total folders (built-in + custom) a user may keep
 
 export default function FridgeScreen({ active = true }) {
   const { palette, settings, items, removeItem, updateItem, updateSettings, addOverlay, removeOverlay } = useApp();
@@ -81,7 +82,7 @@ export default function FridgeScreen({ active = true }) {
     setShowGrid(true);
     setEditing(true);
     addOverlay(); // freezes the App-level horizontal page swipe
-    Animated.timing(editA, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+    Animated.timing(editA, { toValue: 1, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start();
   };
 
   const exitEdit = useCallback(() => {
@@ -91,7 +92,7 @@ export default function FridgeScreen({ active = true }) {
     setEditing(false);
     removeOverlay();
     Haptics.selectionAsync().catch(() => {});
-    Animated.timing(editA, { toValue: 0, duration: 240, useNativeDriver: true }).start(({ finished }) => {
+    Animated.timing(editA, { toValue: 0, duration: 300, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
       if (finished) setShowGrid(false);
     });
   }, [commitRename, removeOverlay, editA]);
@@ -135,6 +136,10 @@ export default function FridgeScreen({ active = true }) {
     }
   };
   const addFolder = () => {
+    if (catsRef.current.length >= MAX_FOLDERS) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const used = new Set(catsRef.current.map((c) => c.skinId));
     const skin = CATEGORY_SKINS.find((sk) => !used.has(sk.key)) || CATEGORY_SKINS[catsRef.current.length % CATEGORY_SKINS.length];
@@ -159,13 +164,12 @@ export default function FridgeScreen({ active = true }) {
       { scale: editA.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
     ],
   };
-  const bodyStyle = {
-    opacity: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-    transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0.96] }) }],
-  };
+  // The edit layer is OPAQUE (its own bg) and simply fades in over the static
+  // fridge — a clean single fade, no cross-dissolve gray. A subtle scale gives depth.
   const gridStyle = {
     opacity: editA,
-    transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1.04, 1] }) }],
+    backgroundColor: palette.bg,
+    transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1.03, 1] }) }],
   };
   const soonStyle = { opacity: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) };
   const btnBorder = editA.interpolate({ inputRange: [0, 1], outputRange: [palette.line, palette.accent] });
@@ -236,7 +240,7 @@ export default function FridgeScreen({ active = true }) {
 
       <View style={[s.cavityPad, { paddingBottom: insets.bottom + SPACE.md }]}>
         <View style={s.stage} onLayout={(e) => setGridArea(e.nativeEvent.layout)}>
-          <Animated.View style={[StyleSheet.absoluteFill, bodyStyle]} pointerEvents={editing ? "none" : "auto"}>
+          <View style={StyleSheet.absoluteFill} pointerEvents={editing ? "none" : "auto"}>
             <FridgeBody palette={palette}>
               {visibleCats.slice(0, 2).length > 0 && (
                 <Shelf palette={palette}>
@@ -267,7 +271,7 @@ export default function FridgeScreen({ active = true }) {
                 </Shelf>
               )}
             </FridgeBody>
-          </Animated.View>
+          </View>
 
           {showGrid && gridArea && (
             <Animated.View style={[StyleSheet.absoluteFill, gridStyle]} pointerEvents={editing ? "auto" : "none"}>
@@ -277,6 +281,8 @@ export default function FridgeScreen({ active = true }) {
                 width={gridArea.width}
                 height={gridArea.height}
                 defaultKeys={DEFAULT_KEYS}
+                editing={editing}
+                canAdd={cats.length < MAX_FOLDERS}
                 renamingKey={renamingKey}
                 renameDraft={renameDraft}
                 setRenameDraft={setRenameDraft}
