@@ -4,12 +4,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { resolveCat, CATEGORY_SKINS, DEFAULT_FRIDGE_NAME, RADIUS, SPACE } from "../theme";
-import { FridgeBody, Shelf, Bin, WideDrawer, ItemRow } from "../components/Fridge";
+import { FridgeBody, Shelf, Bin, WideDrawer } from "../components/Fridge";
 import { EditIcon, CheckIcon } from "../components/icons";
-import SwipeRow from "../components/SwipeRow";
 import CategoryDrawer from "../components/CategoryDrawer";
 import ItemDetail from "../components/ItemDetail";
 import EditGrid from "../components/EditGrid";
+import SoonStrip from "../components/SoonStrip";
 import { daysLeft } from "../lib/expiry";
 
 const DEFAULT_KEYS = new Set(DEFAULT_CATEGORIES.map((c) => c.key));
@@ -47,10 +47,12 @@ export default function FridgeScreen({ active = true }) {
     return d !== null && d <= settings.notifyDays;
   }).length;
 
-  const soon = items
-    .filter((i) => i.exp && daysLeft(i.exp) !== null && daysLeft(i.exp) <= 7)
-    .sort((a, b) => daysLeft(a.exp) - daysLeft(b.exp))
-    .slice(0, 3);
+  const soonItems = React.useMemo(
+    () => items
+      .filter((i) => i.exp && daysLeft(i.exp) !== null && daysLeft(i.exp) <= 7)
+      .sort((a, b) => daysLeft(a.exp) - daysLeft(b.exp)),
+    [items],
+  );
 
   // ── Fridge-name rename (unchanged) ─────────────────────────────────────────
   const commitName = () => {
@@ -174,7 +176,6 @@ export default function FridgeScreen({ active = true }) {
     opacity: editA.interpolate({ inputRange: [0.3, 1], outputRange: [0, 1], extrapolate: "clamp" }),
     transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1.03, 1] }) }],
   };
-  const soonStyle = { opacity: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) };
   const btnBorder = editA.interpolate({ inputRange: [0, 1], outputRange: [palette.line, palette.accent] });
 
   return (
@@ -230,16 +231,7 @@ export default function FridgeScreen({ active = true }) {
         )}
       </View>
 
-      {soon.length > 0 && !showGrid && (
-        <Animated.View style={[s.soonWrap, soonStyle]} pointerEvents={editing ? "none" : "auto"}>
-          <Text style={[s.soonKicker, { color: palette.textSoft }]}>EAT ME FIRST</Text>
-          {soon.map((it) => (
-            <SwipeRow key={it.id} palette={palette} onRemove={() => removeItem(it.id)}>
-              <ItemRow item={it} palette={palette} onOpenItem={(item) => setDetail(item)} />
-            </SwipeRow>
-          ))}
-        </Animated.View>
-      )}
+      <SoonStrip items={soonItems} palette={palette} editA={editA} editing={editing} onOpenItem={setDetail} />
 
       <View style={[s.cavityPad, { paddingBottom: insets.bottom + SPACE.md }]}>
         <View style={[s.stage, { backgroundColor: palette.bg }]} onLayout={(e) => setGridArea(e.nativeEvent.layout)}>
@@ -340,8 +332,6 @@ const s = StyleSheet.create({
   pillInput: { minWidth: 230, textAlign: "center", fontSize: 22, fontWeight: "900" },
   pillName: { fontSize: 24, fontWeight: "900", letterSpacing: 0.3 },
   pillSub: { fontSize: 13, fontWeight: "600", marginTop: 2 },
-  soonWrap: { paddingHorizontal: SPACE.lg, marginBottom: SPACE.sm, gap: SPACE.xs },
-  soonKicker: { fontSize: 11, fontWeight: "800", letterSpacing: 2, marginBottom: 2 },
   cavityPad: { flex: 1, paddingHorizontal: SPACE.md },
   stage: { flex: 1 },
 });

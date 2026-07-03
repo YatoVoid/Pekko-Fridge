@@ -1,6 +1,7 @@
 // Post-scan sheet: shows parsed dates, photos, name + category, saves to fridge.
-import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, Image, Dimensions, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 import { RADIUS, SPACE, resolveCat, catColors } from "../theme";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { PrimaryButton } from "./ui";
@@ -9,6 +10,8 @@ import { formatDate as fmt } from "../lib/expiry";
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
+
+const SHEET_MAX_H = Math.round(Dimensions.get("window").height * 0.66);
 
 // Generate plausible alternative dates by toggling a single 6↔8 digit in the
 // day / month / year — the digit pair dot-matrix OCR most often confuses.
@@ -51,6 +54,8 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
   const [cat, setCat] = useState("other");
   const [photos, setPhotos] = useState([]);
   const [exp, setExp] = useState(null); // chosen expiry (editable via candidate chips)
+  const scrollRef = useRef(null);
+  const nameRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
@@ -81,9 +86,20 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
   }, [result, exp]);
 
   return (
-    <SwipeSheet visible={visible} onClose={onClose} palette={palette}>
-      <Text style={[s.title, { color: palette.text }]}>Got it</Text>
-
+    <SwipeSheet
+      visible={visible}
+      onClose={onClose}
+      palette={palette}
+      scrollable
+      header={<Text style={[s.title, { color: palette.text }]}>Got it</Text>}
+    >
+      <ScrollView
+        ref={scrollRef}
+        style={{ maxHeight: SHEET_MAX_H }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 4 }}
+      >
       <Text style={[s.field, { color: palette.textSoft }]}>Expires</Text>
       <DateField value={exp} onChange={setExp} palette={palette} region={region} />
       {result?.mfg ? (
@@ -122,10 +138,13 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
 
       <Text style={[s.field, { color: palette.textSoft }]}>Name</Text>
       <TextInput
+        ref={nameRef}
         value={name}
         onChangeText={setName}
         placeholder="What is it?"
         placeholderTextColor={palette.textSoft}
+        returnKeyType="done"
+        onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60)}
         style={[s.input, { color: palette.text, backgroundColor: palette.surfaceAlt, borderColor: palette.line }]}
       />
 
@@ -149,18 +168,34 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
       </View>
 
       <View style={{ height: SPACE.lg }} />
-      <PrimaryButton
-        label="Save to Fridge"
-        palette={palette}
-        disabled={!name.trim()}
-        onPress={() => onSave({ name: name.trim(), category: cat, exp, mfg: result?.mfg || null, photos })}
-      />
+      <View>
+        <PrimaryButton
+          label="Save to Fridge"
+          palette={palette}
+          disabled={!name.trim()}
+          onPress={() => onSave({ name: name.trim(), category: cat, exp, mfg: result?.mfg || null, photos })}
+        />
+        {!name.trim() && (
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+              nameRef.current?.focus();
+            }}
+          />
+        )}
+        <Text style={[s.saveHint, { color: palette.textSoft }]}>
+          {name.trim() ? " " : "Give it a name to save it"}
+        </Text>
+      </View>
+      </ScrollView>
     </SwipeSheet>
   );
 }
 
 const s = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: "900", marginBottom: SPACE.md },
+  title: { fontSize: 24, fontWeight: "900" },
+  saveHint: { fontSize: 12.5, fontWeight: "600", textAlign: "center", marginTop: 8, minHeight: 16 },
   dates: { borderRadius: RADIUS.md, padding: SPACE.md, gap: 6, marginBottom: SPACE.md },
   dateRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
   dateLabel: { fontSize: 13, fontWeight: "700" },

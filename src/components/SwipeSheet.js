@@ -1,7 +1,7 @@
 // Bottom sheet in a transparent Modal — a true overlay that never resizes the
 // screen behind it. Smooth slide in/out; swipe down from anywhere to dismiss.
 import React, { useEffect, useRef, useState } from "react";
-import { Modal, Animated, Easing, Pressable, PanResponder, StyleSheet, View, Dimensions } from "react-native";
+import { Modal, Animated, Easing, Pressable, PanResponder, StyleSheet, View, Dimensions, KeyboardAvoidingView } from "react-native";
 import { RADIUS, SPACE } from "../theme";
 import { useApp } from "../store";
 
@@ -57,25 +57,30 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
   return (
     <Modal visible={render} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[s.backdrop, { opacity }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <Animated.View
-          {...(scrollable ? {} : panSheet.panHandlers)}
-          style={[s.sheet, { backgroundColor: palette.surface, transform: [{ translateY: ty }] }]}
-        >
-          {/* grabber + header is always a drag-to-close handle (its own responder) */}
-          <View {...panHandle.panHandlers} style={s.handle}>
-            <View style={[s.grabber, { backgroundColor: palette.line }]} />
-            {header}
-          </View>
-          {children}
-        </Animated.View>
+        {/* behavior="padding" lifts the bottom-anchored sheet above the keyboard;
+            adjustResize is dead inside a statusBarTranslucent transparent Modal. */}
+        <KeyboardAvoidingView behavior="padding" style={s.kav}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+          <Animated.View
+            {...(scrollable ? {} : panSheet.panHandlers)}
+            style={[s.sheet, { backgroundColor: palette.surface, transform: [{ translateY: ty }] }]}
+          >
+            {/* grabber + header is always a drag-to-close handle (its own responder) */}
+            <View {...panHandle.panHandlers} style={s.handle}>
+              <View style={[s.grabber, { backgroundColor: palette.line }]} />
+              {header}
+            </View>
+            {children}
+          </Animated.View>
+        </KeyboardAvoidingView>
       </Animated.View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  kav: { flex: 1, justifyContent: "flex-end" },
   sheet: {
     borderTopLeftRadius: RADIUS.lg + 6, borderTopRightRadius: RADIUS.lg + 6,
     paddingHorizontal: SPACE.lg, paddingTop: SPACE.md, paddingBottom: SPACE.xl,
