@@ -6,15 +6,15 @@ Point the camera at a product's date label. Pekko reads the date on your device,
 
 ## What it does
 
-Scan dates with the camera. A crop guide shows what will be read, then Pekko reads the printed date on device and calculates the days remaining.
+Scan dates with the camera. A crop guide shows what will be read, then Pekko reads the printed date on device and calculates the days remaining. Setting a date by hand is quick too — one tap adds a week, a month, or a year, so far-off dates don't mean endless scrolling.
 
 Keep photos of each item. You can attach pictures of the label or the product so you remember exactly what it is. The photos stay on your phone.
 
-Organise your fridge into categories. Items sit in tidy tabs for Dairy, Cheese, Meat, Soup, Vegetables, and Other, each with its own drawn icon.
+Organise your fridge into folders. Start with Dairy, Cheese, Meat, Soup, Vegetables, and Other — each with its own drawn icon — then make them yours: add your own folders, rename them, drag to reorder, or hide the ones you don't use, all straight from the fridge screen.
 
-See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer.
+See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer. An "eat me first" strip surfaces whatever is closest to spoiling.
 
-Get a gentle reminder. Turn on notifications and Pekko nudges you before food is about to spoil.
+Get a gentle reminder. Turn on notifications and Pekko nudges you before food is about to spoil — right from the reminder you can tap "Mark eaten" or "Snooze 2 days" without opening the app.
 
 Make it yours. Rename your fridge, switch between light, dark, and system themes, and choose the date format that matches your region.
 
@@ -26,8 +26,8 @@ Everything happens locally. The camera is only used to read expiry dates, and im
 
 Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little food or money, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
 
-[Buy me a coffee](https://buymeacoffee.com/walilambere)
+<a href="https://buymeacoffee.com/walilambere" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="60"></a>
 
 ## Status
 
-Version 1.0.1, built with Expo and React Native for Android.
+Version 1.2.0, built with Expo and React Native for Android.
