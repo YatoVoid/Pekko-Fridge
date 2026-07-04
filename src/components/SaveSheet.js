@@ -42,6 +42,13 @@ function looksClean(name) {
   return families.every((f) => fam[f] > 2 || fam[f] >= letters * 0.25);
 }
 
+// First letter capital, the rest lower case (OCR often yells in ALL CAPS).
+// A no-op for scripts without case (Japanese, Chinese, etc.).
+function sentenceCase(s) {
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
 // Pick a product name from an OCR result. The product name is usually the
 // biggest text on the pack, so prefer the tallest text line (its bounding box);
 // fall back to the Latin brand guess, then the first line.
@@ -135,7 +142,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     const result = await recognizeBest(enhanced); // null in Expo Go / on failure → no-op
     if (!result?.text) return;
     const picked = pickName(result).slice(0, 40);
-    if (picked && looksClean(picked) && !nameValRef.current.trim()) setName(picked);
+    if (picked && looksClean(picked) && !nameValRef.current.trim()) setName(sentenceCase(picked));
   };
 
   // Correction chips: other dates spotted on the label, plus 6↔8 variants of the
