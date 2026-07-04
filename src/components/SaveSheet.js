@@ -7,8 +7,18 @@ import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { PrimaryButton } from "./ui";
 import { CategoryIcon } from "./FoodIcons";
 import { formatDate as fmt } from "../lib/expiry";
-import { recognizeText } from "../lib/ocr";
+import { recognizeBest } from "../lib/ocr";
 import { parseLabel } from "../lib/dateParser";
+
+// Pick a product name from OCR text in any script: prefer the Latin brand guess,
+// else the longest line that has letters and doesn't start with a digit.
+function pickName(text) {
+  const guess = parseLabel(text).guessName;
+  if (guess) return guess;
+  const lines = text.split(/\r?\n+/).map((l) => l.trim()).filter(Boolean);
+  const named = lines.filter((l) => /\p{L}/u.test(l) && !/^\d/.test(l));
+  return named.sort((a, b) => b.length - a.length)[0] || lines[0] || "";
+}
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
@@ -74,13 +84,13 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     const uri = await (fromLibrary ? pickFromLibrary() : takePhoto());
     if (!uri) return;
     setPhotos((p) => [...p, uri]);
-    // A photo added here is the product shot — read a name off it, but never
-    // overwrite anything the user has already typed.
+    // A photo added here is the product shot — read a name off it (any language),
+    // but never overwrite anything the user has already typed.
     if (nameValRef.current.trim()) return;
-    const text = await recognizeText(uri); // null in Expo Go / on failure → no-op
+    const text = await recognizeBest(uri); // null in Expo Go / on failure → no-op
     if (!text) return;
-    const { guessName } = parseLabel(text, region);
-    if (guessName && !nameValRef.current.trim()) setName(guessName);
+    const picked = pickName(text).slice(0, 40);
+    if (picked && !nameValRef.current.trim()) setName(picked);
   };
 
   // Correction chips: other dates spotted on the label, plus 6↔8 variants of the
