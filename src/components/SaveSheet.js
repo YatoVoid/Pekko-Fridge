@@ -11,6 +11,37 @@ import { recognizeBest } from "../lib/ocr";
 import { enhanceForOcr } from "../lib/enhance";
 import { parseLabel } from "../lib/dateParser";
 
+// Which script family a character belongs to (or null if it isn't a letter).
+function scriptFamily(ch) {
+  const c = ch.codePointAt(0);
+  if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || (c >= 0xc0 && c <= 0x24f)) return "latin";
+  if (c >= 0x400 && c <= 0x4ff) return "cyrillic";
+  if (c >= 0x3040 && c <= 0x30ff) return "kana";
+  if (c >= 0x4e00 && c <= 0x9fff) return "han";
+  if (c >= 0xac00 && c <= 0xd7a3) return "hangul";
+  if (c >= 0x900 && c <= 0x97f) return "deva";
+  return /\p{L}/u.test(ch) ? "other" : null;
+}
+
+// Reject obvious OCR garbage (e.g. Cyrillic read by a Latin/CJK model): too few
+// letters, too many symbols, 3+ scripts, or a stray character from another script.
+// Better to leave the name empty for manual entry than to fill nonsense.
+function looksClean(name) {
+  const fam = {};
+  let letters = 0;
+  let symbols = 0;
+  for (const ch of name.trim()) {
+    const s = scriptFamily(ch);
+    if (s) { letters += 1; fam[s] = (fam[s] || 0) + 1; }
+    else if (!/[\s\-.'&/()]/.test(ch)) symbols += 1;
+  }
+  if (letters < 2) return false;
+  if (symbols > letters * 0.2) return false;
+  const families = Object.keys(fam);
+  if (families.length >= 3) return false;
+  return families.every((f) => fam[f] > 2 || fam[f] >= letters * 0.25);
+}
+
 // Pick a product name from an OCR result. The product name is usually the
 // biggest text on the pack, so prefer the tallest text line (its bounding box);
 // fall back to the Latin brand guess, then the first line.
@@ -104,7 +135,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     const result = await recognizeBest(enhanced); // null in Expo Go / on failure → no-op
     if (!result?.text) return;
     const picked = pickName(result).slice(0, 40);
-    if (picked && !nameValRef.current.trim()) setName(picked);
+    if (picked && looksClean(picked) && !nameValRef.current.trim()) setName(picked);
   };
 
   // Correction chips: other dates spotted on the label, plus 6↔8 variants of the
