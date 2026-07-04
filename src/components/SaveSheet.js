@@ -7,6 +7,8 @@ import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { PrimaryButton } from "./ui";
 import { CategoryIcon } from "./FoodIcons";
 import { formatDate as fmt } from "../lib/expiry";
+import { recognizeText } from "../lib/ocr";
+import { parseLabel } from "../lib/dateParser";
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
@@ -56,10 +58,12 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
   const [exp, setExp] = useState(null); // chosen expiry (editable via candidate chips)
   const scrollRef = useRef(null);
   const nameRef = useRef(null);
+  const nameValRef = useRef("");
+  nameValRef.current = name; // live mirror so addPhoto reads the current name after its awaits
 
   useEffect(() => {
     if (visible) {
-      setName(result?.guessName || "");
+      setName(""); // first photo is the date label — don't seed the name from it
       setCat("other");
       setPhotos(result?.photo ? [result.photo] : []);
       setExp(result?.exp || null);
@@ -68,7 +72,15 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
 
   const addPhoto = async (fromLibrary) => {
     const uri = await (fromLibrary ? pickFromLibrary() : takePhoto());
-    if (uri) setPhotos((p) => [...p, uri]);
+    if (!uri) return;
+    setPhotos((p) => [...p, uri]);
+    // A photo added here is the product shot — read a name off it, but never
+    // overwrite anything the user has already typed.
+    if (nameValRef.current.trim()) return;
+    const text = await recognizeText(uri); // null in Expo Go / on failure → no-op
+    if (!text) return;
+    const { guessName } = parseLabel(text, region);
+    if (guessName && !nameValRef.current.trim()) setName(guessName);
   };
 
   // Correction chips: other dates spotted on the label, plus 6↔8 variants of the

@@ -19,7 +19,9 @@ export default function FridgeScreen({ active = true }) {
   const { palette, settings, items, removeItem, updateItem, updateSettings, addOverlay, removeOverlay } = useApp();
   const insets = useSafeAreaInsets();
   const [drawerKey, setDrawerKey] = useState(null);
-  const [detail, setDetail] = useState(null);
+  // Track the open item by id and derive it live from the store, so edits
+  // (date, name, photos) re-render the detail sheet instead of showing a stale snapshot.
+  const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [naming, setNaming] = useState(false); // fridge-name inline edit
   const [nameDraft, setNameDraft] = useState("");
@@ -53,6 +55,8 @@ export default function FridgeScreen({ active = true }) {
       .sort((a, b) => daysLeft(a.exp) - daysLeft(b.exp)),
     [items],
   );
+
+  const detail = detailId ? items.find((i) => i.id === detailId) || null : null;
 
   // ── Fridge-name rename (unchanged) ─────────────────────────────────────────
   const commitName = () => {
@@ -235,7 +239,7 @@ export default function FridgeScreen({ active = true }) {
         )}
       </View>
 
-      <SoonStrip items={soonItems} palette={palette} editA={editA} editing={editing} onOpenItem={setDetail} />
+      <SoonStrip items={soonItems} palette={palette} editA={editA} editing={editing} onOpenItem={(it) => setDetailId(it.id)} />
 
       {items.length === 0 && !editing && (
         <View style={[s.emptyHint, { backgroundColor: palette.surface, borderColor: palette.line }]}>
@@ -309,7 +313,7 @@ export default function FridgeScreen({ active = true }) {
         items={drawerKey ? inCat(drawerKey) : []}
         palette={palette}
         onClose={() => setDrawerKey(null)}
-        onOpenItem={(it) => { setDrawerKey(null); setDetail(it); }}
+        onOpenItem={(it) => { setDrawerKey(null); setDetailId(it.id); }}
         onRemove={removeItem}
       />
 
@@ -319,7 +323,7 @@ export default function FridgeScreen({ active = true }) {
         region={settings.region}
         onUpdate={updateItem}
         onRemove={removeItem}
-        onClose={() => setDetail(null)}
+        onClose={() => setDetailId(null)}
       />
     </View>
   );

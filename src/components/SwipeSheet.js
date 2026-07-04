@@ -58,7 +58,8 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
     <Modal visible={render} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[s.backdrop, { opacity }]}>
         {/* behavior="padding" lifts the bottom-anchored sheet above the keyboard;
-            adjustResize is dead inside a statusBarTranslucent transparent Modal. */}
+            adjustResize/adjustPan are both dead inside a statusBarTranslucent
+            transparent Modal (FLAG_LAYOUT_NO_LIMITS), so the KAV is the only lifter here. */}
         <KeyboardAvoidingView behavior="padding" style={s.kav}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
           <Animated.View
