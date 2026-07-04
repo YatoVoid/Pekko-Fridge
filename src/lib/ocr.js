@@ -18,8 +18,7 @@ const SCRIPTS = ["Latin", "Chinese", "Japanese", "Korean", "Devanagari"];
 
 async function recognizeWith(uri, script) {
   try {
-    const result = await TextRecognition.recognize(uri, script);
-    return result?.text || null;
+    return (await TextRecognition.recognize(uri, script)) || null; // { text, blocks }
   } catch {
     return null;
   }
@@ -28,21 +27,22 @@ async function recognizeWith(uri, script) {
 // Latin-only, fast — used by the date scanner (printed dates are numeric).
 export async function recognizeText(uri) {
   if (!TextRecognition || !uri) return null;
-  return recognizeWith(uri, "Latin");
+  const r = await recognizeWith(uri, "Latin");
+  return r?.text || null;
 }
 
 // Multi-script — used when reading a product name off a photo, so non-Latin
 // names (Japanese, Chinese, Korean, Hindi) come through in the correct script.
-// Runs the recognizers in parallel and keeps the one with the most characters.
+// Runs the recognizers in parallel and keeps the richest result (full object,
+// so callers can use block/line geometry to find the most prominent text).
 export async function recognizeBest(uri) {
   if (!TextRecognition || !uri) return null;
   const results = await Promise.all(SCRIPTS.map((s) => recognizeWith(uri, s)));
   let best = null;
   let bestScore = -1;
-  for (const t of results) {
-    if (!t) continue;
-    const score = t.replace(/\s+/g, "").length; // most actual (non-space) characters wins
-    if (score > bestScore) { bestScore = score; best = t; }
+  for (const r of results) {
+    const score = (r?.text || "").replace(/\s+/g, "").length; // most actual characters wins
+    if (score > bestScore) { bestScore = score; best = r; }
   }
-  return best;
+  return best; // { text, blocks } | null
 }

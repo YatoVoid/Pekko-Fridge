@@ -8,16 +8,29 @@ import { PrimaryButton } from "./ui";
 import { CategoryIcon } from "./FoodIcons";
 import { formatDate as fmt } from "../lib/expiry";
 import { recognizeBest } from "../lib/ocr";
+import { enhanceForOcr } from "../lib/enhance";
 import { parseLabel } from "../lib/dateParser";
 
-// Pick a product name from OCR text in any script: prefer the Latin brand guess,
-// else the longest line that has letters and doesn't start with a digit.
-function pickName(text) {
-  const guess = parseLabel(text).guessName;
+// Pick a product name from an OCR result. The product name is usually the
+// biggest text on the pack, so prefer the tallest text line (its bounding box);
+// fall back to the Latin brand guess, then the first line.
+function pickName(result) {
+  let best = "";
+  let bestH = 0;
+  for (const b of result?.blocks || []) {
+    for (const line of b.lines || []) {
+      const txt = (line.text || "").trim();
+      const h = line.frame?.height || 0;
+      if (txt && txt.length <= 30 && /\p{L}/u.test(txt) && !/^\d/.test(txt) && h > bestH) {
+        bestH = h;
+        best = txt;
+      }
+    }
+  }
+  if (best) return best;
+  const guess = parseLabel(result?.text || "").guessName;
   if (guess) return guess;
-  const lines = text.split(/\r?\n+/).map((l) => l.trim()).filter(Boolean);
-  const named = lines.filter((l) => /\p{L}/u.test(l) && !/^\d/.test(l));
-  return named.sort((a, b) => b.length - a.length)[0] || lines[0] || "";
+  return (result?.text || "").split(/\r?\n+/).map((l) => l.trim()).filter(Boolean)[0] || "";
 }
 import { takePhoto, pickFromLibrary } from "../lib/photos";
 import SwipeSheet from "./SwipeSheet";
@@ -87,9 +100,10 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     // A photo added here is the product shot — read a name off it (any language),
     // but never overwrite anything the user has already typed.
     if (nameValRef.current.trim()) return;
-    const text = await recognizeBest(uri); // null in Expo Go / on failure → no-op
-    if (!text) return;
-    const picked = pickName(text).slice(0, 40);
+    const enhanced = await enhanceForOcr(uri); // grayscale + contrast for readability
+    const result = await recognizeBest(enhanced); // null in Expo Go / on failure → no-op
+    if (!result?.text) return;
+    const picked = pickName(result).slice(0, 40);
     if (picked && !nameValRef.current.trim()) setName(picked);
   };
 
