@@ -29,7 +29,7 @@ export default function CategoryDrawer({ category, items = [], palette, onClose,
       {category && (
         <ScrollView style={{ maxHeight: LIST_MAX }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={true}>
           {items.length === 0 ? (
-            <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty — scan something tasty.</Text>
+            <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty. Scan a product to add one.</Text>
           ) : (
             items.map((it) => (
               <SwipeRow key={it.id} palette={palette} onRemove={() => onRemove?.(it.id)}>

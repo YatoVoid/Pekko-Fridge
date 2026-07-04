@@ -67,7 +67,7 @@ export default function Onboarding() {
         })}
       </View>
 
-      <Text style={[s.q, { color: palette.text, marginTop: SPACE.lg }]}>Remind me before food expires</Text>
+      <Text style={[s.q, { color: palette.text, marginTop: SPACE.lg }]}>Remind me before items expire</Text>
       <Stepper value={days} set={setDays} min={1} max={14} palette={palette} unit={(v) => `${v} day${v === 1 ? "" : "s"} before`} />
 
       <Text style={[s.q, { color: palette.text, marginTop: SPACE.lg }]}>Auto-remove expired items after</Text>

@@ -80,7 +80,7 @@ export default function SettingsScreen() {
         />
       </Card>
 
-      <Card title="Reminders" subtitle="A gentle nudge before food spoils." palette={palette}>
+      <Card title="Reminders" subtitle="A gentle nudge before items expire." palette={palette}>
         <View style={s.row}>
           <Text style={[s.rowLabel, { color: palette.text }]}>Push reminders</Text>
           <Switch

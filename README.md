@@ -3,9 +3,9 @@
 
 # Pekko Fridge
 
-Pekko Fridge is a cute, private expiry date tracker for your food. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
+Pekko Fridge is a cute, private expiry date tracker for the things you buy: food, medicine, cosmetics, and anything else with a date on it. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
 
-Point the camera at a product's date label. Pekko reads the date on your device, works out how many days are left, and saves the item into your fridge so you always know what to eat first.
+Point the camera at a product's date label. Pekko reads the date on your device, works out how many days are left, and saves the item into your fridge so you always know what to use first.
 
 ## What it does
 
@@ -15,9 +15,9 @@ Keep photos of each item. You can attach pictures of the label or the product so
 
 Organise your fridge into folders. You start with Dairy, Cheese, Meat, Soup, Vegetables, and Other, each with its own drawn icon. From there you make them your own. Add your own folders, rename them, drag to reorder, or hide the ones you don't use, all straight from the fridge screen.
 
-See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer. An "eat me first" strip surfaces whatever is closest to spoiling.
+See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer. A "use first" strip surfaces whatever is closest to expiring.
 
-Get a gentle reminder. Turn on notifications and Pekko nudges you before food is about to spoil. Right from the reminder you can tap "Mark eaten" or "Snooze 2 days" without opening the app.
+Get a gentle reminder. Turn on notifications and Pekko nudges you before an item is about to expire. Right from the reminder you can tap "Mark used" or "Snooze 2 days" without opening the app.
 
 Make it yours. Rename your fridge, switch between light, dark, and system themes, and choose the date format that matches your region.
 
@@ -35,7 +35,7 @@ State. A single store holds your settings and items and saves to local storage o
 
 Interface. A swipe pager for Fridge, Scan and Settings, a fridge you can rearrange (folders drag, rename, add and hide in an edit mode), and hand drawn SVG icons throughout. No emoji anywhere.
 
-Reminders. Local notifications fire before food expires, with "Mark eaten" and "Snooze 2 days" buttons.
+Reminders. Local notifications fire before an item expires, with "Mark used" and "Snooze 2 days" buttons.
 
 ## Tech stack
 
@@ -83,6 +83,6 @@ Copyright 2026 Wali Lambert. All rights reserved. The code is public so you can 
 
 ## Support
 
-Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little food or money, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
+Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little money or hassle, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
 
 <a href="https://buymeacoffee.com/walilambere" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="60"></a>

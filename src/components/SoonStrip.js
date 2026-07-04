@@ -83,7 +83,7 @@ export default function SoonStrip({ items, palette, editA, editing, onOpenItem }
         {/* presence — JS-driven opacity + translateY */}
         <Animated.View style={{ flex: 1, opacity: presence, transform: [{ translateY: contentTranslate }] }}>
           <View style={st.header}>
-            <Text style={[st.kicker, { color: palette.textSoft }]}>EAT ME FIRST</Text>
+            <Text style={[st.kicker, { color: palette.textSoft }]}>USE FIRST</Text>
             <View style={[st.badge, { backgroundColor: palette.badge.warn.bg }]}>
               <Text style={[st.badgeText, { color: palette.badge.warn.fg }]}>{items.length}</Text>
             </View>

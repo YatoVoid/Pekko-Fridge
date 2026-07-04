@@ -112,7 +112,7 @@ export default function ScannerScreen({ active }) {
       cooldownRef.current = Date.now() + COOLDOWN_MS;
       progress.setValue(0);
       setPhase("search");
-      flash(ocrAvailable ? "No date found — move closer, then hold steady" : "Scanning…");
+      flash(ocrAvailable ? "No date found. Move closer, then hold steady" : "Scanning…");
       return;
     }
 
@@ -186,7 +186,7 @@ export default function ScannerScreen({ active }) {
         <View style={{ marginBottom: SPACE.md }}><CameraIcon color={palette.accent} size={48} active /></View>
         <Text style={[st.permTitle, { color: palette.text }]}>Camera, please</Text>
         <Text style={[st.permBody, { color: palette.textSoft }]}>
-          Pekko needs the camera to read expiry labels. Photos stay on your phone — always.
+          Pekko needs the camera to read expiry labels. Photos stay on your phone, always.
         </Text>
         <View style={{ height: SPACE.lg }} />
         <View style={{ width: "82%" }}>
@@ -237,7 +237,7 @@ export default function ScannerScreen({ active }) {
           >
             <View style={st.shutterInner} />
           </Pressable>
-          <Text style={st.shutterHint}>Tap to capture — or aim and hold steady over the date</Text>
+          <Text style={st.shutterHint}>Tap to capture, or aim and hold steady over the date</Text>
         </View>
       )}
 

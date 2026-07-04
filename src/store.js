@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS = {
   batteryPromptShown: false, // one-time "exclude from battery optimization" nudge (Android)
 };
 
-// Notification action category — gives each reminder "Mark eaten" / "Snooze 2 days" buttons.
+// Notification action category: adds "Mark used" / "Snooze 2 days" buttons to each reminder.
 const REMINDER_CATEGORY = "pekko-reminder";
 
 const Ctx = createContext(null);
@@ -77,7 +77,7 @@ export function AppProvider({ children }) {
   // Register the reminder action buttons once.
   useEffect(() => {
     Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY, [
-      { identifier: "eaten", buttonTitle: "Mark eaten", options: { opensAppToForeground: true } },
+      { identifier: "used", buttonTitle: "Mark used", options: { opensAppToForeground: true } },
       { identifier: "snooze", buttonTitle: "Snooze 2 days", options: { opensAppToForeground: true } },
     ]).catch(() => {});
   }, []);
@@ -88,7 +88,7 @@ export function AppProvider({ children }) {
       const action = resp.actionIdentifier;
       const itemId = resp.notification?.request?.content?.data?.itemId;
       if (!itemId) return;
-      if (action === "eaten") removeItemRef.current?.(itemId);
+      if (action === "used") removeItemRef.current?.(itemId);
       else if (action === "snooze") snoozeItemRef.current?.(itemId);
     });
     return () => sub.remove();
@@ -145,9 +145,9 @@ export function AppProvider({ children }) {
       if (when <= new Date()) return null; // already too late to warn
       return await Notifications.scheduleNotificationAsync({
         content: {
-          title: "Rescue your food",
+          title: "Expiring soon",
           body: `${item.name} expires in ${settings.notifyDays} day${settings.notifyDays === 1 ? "" : "s"}.`,
-          categoryIdentifier: REMINDER_CATEGORY, // adds Mark eaten / Snooze buttons
+          categoryIdentifier: REMINDER_CATEGORY, // adds Mark used / Snooze buttons
           data: { itemId: item.id },
         },
         // SDK 56 wants a typed trigger, not a bare Date.
@@ -192,8 +192,8 @@ export function AppProvider({ children }) {
     try {
       notifId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: "Rescue your food",
-          body: `${item.name} — snoozed reminder.`,
+          title: "Expiring soon",
+          body: `${item.name}: reminder snoozed.`,
           categoryIdentifier: REMINDER_CATEGORY,
           data: { itemId: id },
         },
