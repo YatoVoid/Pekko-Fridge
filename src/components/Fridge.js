@@ -64,10 +64,10 @@ export function Bin({ category, count, onPress, onLongPress, palette, showUnit }
           <CategoryIcon catKey={category.icon || category.key} size={46} />
           <Text
             style={[s.binLabel, { color: c.ink }]}
-            numberOfLines={2}
+            numberOfLines={1}
             ellipsizeMode="tail"
             adjustsFontSizeToFit
-            minimumFontScale={0.75}
+            minimumFontScale={0.6}
           >
             {category.label}
           </Text>
@@ -146,7 +146,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: RADIUS.pill,
   },
   countText: { fontSize: 11, fontWeight: "800" },
-  binLabel: { fontSize: 17, lineHeight: 20, fontWeight: "800", marginTop: 6, letterSpacing: 0.2 },
+  binLabel: { fontSize: 17, fontWeight: "800", marginTop: 6, letterSpacing: 0.2 },
   crisper: {
     flex: 1, borderRadius: RADIUS.md + 2, paddingHorizontal: SPACE.lg, flexDirection: "row", alignItems: "center",
     shadowOpacity: 0.5, shadowRadius: 9, shadowOffset: { width: 0, height: 5 }, elevation: 3,
