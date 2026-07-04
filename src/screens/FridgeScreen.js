@@ -145,9 +145,13 @@ export default function FridgeScreen({ active = true }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const used = new Set(catsRef.current.map((c) => c.skinId));
     const skin = CATEGORY_SKINS.find((sk) => !used.has(sk.key)) || CATEGORY_SKINS[catsRef.current.length % CATEGORY_SKINS.length];
+    // Avoid duplicate "New folder" tiles — suffix a number if the name is taken.
+    const names = new Set(catsRef.current.map((c) => c.label));
+    let label = "New folder";
+    for (let n = 2; names.has(label); n++) label = `New folder ${n}`;
     const key = String(Date.now());
-    updateSettings({ categories: [...catsRef.current, { key, label: "New folder", skinId: skin.key, icon: "other", hidden: false }] });
-    setRenameDraft("New folder");
+    updateSettings({ categories: [...catsRef.current, { key, label, skinId: skin.key, icon: "other", hidden: false }] });
+    setRenameDraft(label);
     setRenamingKey(key);
   };
 
@@ -233,6 +237,14 @@ export default function FridgeScreen({ active = true }) {
 
       <SoonStrip items={soonItems} palette={palette} editA={editA} editing={editing} onOpenItem={setDetail} />
 
+      {items.length === 0 && !editing && (
+        <View style={[s.emptyHint, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+          <Text style={[s.emptyHintText, { color: palette.textSoft }]}>
+            Your fridge is empty. Tap Scan below to add your first item.
+          </Text>
+        </View>
+      )}
+
       <View style={[s.cavityPad, { paddingBottom: insets.bottom + SPACE.md }]}>
         <View style={[s.stage, { backgroundColor: palette.bg }]} onLayout={(e) => setGridArea(e.nativeEvent.layout)}>
           <Animated.View style={[StyleSheet.absoluteFill, bodyStyle]} pointerEvents={editing ? "none" : "auto"}>
@@ -241,7 +253,7 @@ export default function FridgeScreen({ active = true }) {
                 <Shelf palette={palette}>
                   {visibleCats.slice(0, 2).map((cat) => (
                     <Bin key={cat.key} category={rc(cat.key)} count={inCat(cat.key).length}
-                         palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} showUnit />
+                         palette={palette} onPress={setDrawerKey} onLongPress={enterEdit} />
                   ))}
                 </Shelf>
               )}
@@ -334,4 +346,6 @@ const s = StyleSheet.create({
   pillSub: { fontSize: 13, fontWeight: "600", marginTop: 2 },
   cavityPad: { flex: 1, paddingHorizontal: SPACE.md },
   stage: { flex: 1 },
+  emptyHint: { marginHorizontal: SPACE.lg, marginBottom: SPACE.sm, borderRadius: RADIUS.lg, borderWidth: 1, paddingVertical: SPACE.md, paddingHorizontal: SPACE.lg },
+  emptyHintText: { fontSize: 13.5, fontWeight: "600", textAlign: "center", lineHeight: 19 },
 });
