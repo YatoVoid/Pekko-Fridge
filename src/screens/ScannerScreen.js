@@ -79,48 +79,50 @@ export default function ScannerScreen({ active }) {
     armedRef.current = false; // used this aim; needs fresh motion to auto-fire again
     fillingRef.current = false;
     fillRef.current?.stop();
-    let photo = null, ocrUri = null;
+    let photo = null, ocrUri = null, rect = null;
     try {
       const pic = await camRef.current?.takePictureAsync({ quality: 1, exif: false });
       photo = pic?.uri || null;
       // a bit looser than the visible box so a date next to other text isn't clipped
-      const rect = boxToPhotoRect(pic?.width, pic?.height, size.w, size.h, 0.9, 0.46);
+      rect = boxToPhotoRect(pic?.width, pic?.height, size.w, size.h, 0.9, 0.46);
       ocrUri = rect && photo ? await cropToRect(photo, rect) : photo;
     } catch { /* ignore */ }
 
     let text = "";
     let parsed = { exp: null };
-    if (ocrAvailable) {
-      // Multi-pass, early-exit on the first parsed date. Enhanced full crop first
-      // (fast happy path); then top/bottom/middle bands (a thin date line fills a
-      // bigger share of a band, so ML Kit reads faint small dates); then full frame.
-      const passes = [];
-      if (ocrUri) passes.push(async () => recognizeText(await enhanceForOcr(ocrUri)));
-      const bw = rect?.width ?? pic?.width ?? 0;
-      const bh = rect?.height ?? 0;
-      if (ocrUri && bh > 240) {
-        for (const topFrac of [0, 0.58, 0.29]) { // top, bottom, middle
-          const band = { originX: 0, originY: Math.round(bh * topFrac), width: bw, height: Math.round(bh * 0.42) };
-          passes.push(async () => recognizeText(await enhanceForOcr(await cropToRect(ocrUri, band))));
+    try {
+      if (ocrAvailable) {
+        // Multi-pass, early-exit on the first parsed date. Enhanced full crop first
+        // (fast happy path); then top/bottom/middle bands (a thin date line fills a
+        // bigger share of a band, so ML Kit reads faint small dates); then full frame.
+        const passes = [];
+        if (ocrUri) passes.push(async () => recognizeText(await enhanceForOcr(ocrUri)));
+        const bw = rect?.width ?? 0;
+        const bh = rect?.height ?? 0;
+        if (ocrUri && bh > 240) {
+          for (const topFrac of [0, 0.58, 0.29]) { // top, bottom, middle
+            const band = { originX: 0, originY: Math.round(bh * topFrac), width: bw, height: Math.round(bh * 0.42) };
+            passes.push(async () => recognizeText(await enhanceForOcr(await cropToRect(ocrUri, band))));
+          }
         }
-      }
-      if (photo && photo !== ocrUri) passes.push(() => recognizeText(photo));
+        if (photo && photo !== ocrUri) passes.push(() => recognizeText(photo));
 
-      let all = "";
-      for (const run of passes) {
-        const t = await run();
-        if (t) { all += "\n" + t; if (!text) text = t; }
-        const p = parseLabel(t || "", settings.region);
-        if (p.exp) { text = t; parsed = p; break; }
+        let all = "";
+        for (const run of passes) {
+          const t = await run();
+          if (t) { all += "\n" + t; if (!text) text = t; }
+          const p = parseLabel(t || "", settings.region);
+          if (p.exp) { text = t; parsed = p; break; }
+        }
+        if (!parsed.exp && all) { // last chance: parse everything we read together
+          const p = parseLabel(all, settings.region);
+          if (p.exp) { text = all.trim(); parsed = p; }
+        }
+      } else {
+        text = readFrame();
+        parsed = parseLabel(text, settings.region);
       }
-      if (!parsed.exp && all) { // last chance: parse everything we read together
-        const p = parseLabel(all, settings.region);
-        if (p.exp) { text = all.trim(); parsed = p; }
-      }
-    } else {
-      text = readFrame();
-      parsed = parseLabel(text, settings.region);
-    }
+    } catch { /* any read failure falls through to the "no date" reset below */ }
 
     if (!parsed.exp && !force) {
       busyRef.current = false;
