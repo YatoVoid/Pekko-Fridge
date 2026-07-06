@@ -75,7 +75,7 @@ src/
 
 ## Status
 
-Version 1.2.2, built with Expo and React Native for Android.
+Version 1.2.3, built with Expo and React Native for Android.
 
 ## License
 
