@@ -14,7 +14,3 @@ FridgeUiRedesignSpec/
 
 # intermediate store screenshot captures (not for repo)
 assets/store/raw/
-
-# local build/project notes — kept on disk, never committed
-CLAUDE.md
-.claude/
