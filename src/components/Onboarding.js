@@ -1,10 +1,9 @@
-// First-launch setup: date format, reminder lead time, auto-remove window.
 import React, { useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp } from "../store";
-import { RADIUS, SPACE } from "../theme";
+import { RADIUS, SPACE, HAND } from "../theme";
 import { FridgeIcon } from "./icons";
 import { PrimaryButton } from "./ui";
 
@@ -17,14 +16,24 @@ const FORMATS = [
 function Stepper({ value, set, min, max, unit, palette }) {
   return (
     <View style={[s.stepper, { backgroundColor: palette.surface, borderColor: palette.line }]}>
-      <Pressable onPress={() => { Haptics.selectionAsync().catch(() => {}); set(Math.max(min, value - 1)); }} style={[s.step, { backgroundColor: palette.surfaceAlt }]}>
-        <Text style={[s.stepSign, { color: palette.text }]}>–</Text>
+      <Pressable
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); set(Math.max(min, value - 1)); }}
+        style={[s.step, { borderColor: palette.text }]}
+        accessibilityRole="button"
+        accessibilityLabel="Fewer days"
+      >
+        <Text style={[s.stepSign, { color: palette.text }]}>-</Text>
       </Pressable>
       <View style={s.stepMid}>
         <Text style={[s.stepNum, { color: palette.text }]}>{value}</Text>
         <Text style={[s.stepUnit, { color: palette.textSoft }]}>{unit(value)}</Text>
       </View>
-      <Pressable onPress={() => { Haptics.selectionAsync().catch(() => {}); set(Math.min(max, value + 1)); }} style={[s.step, { backgroundColor: palette.surfaceAlt }]}>
+      <Pressable
+        onPress={() => { Haptics.selectionAsync().catch(() => {}); set(Math.min(max, value + 1)); }}
+        style={[s.step, { borderColor: palette.text }]}
+        accessibilityRole="button"
+        accessibilityLabel="More days"
+      >
         <Text style={[s.stepSign, { color: palette.text }]}>+</Text>
       </Pressable>
     </View>
@@ -45,9 +54,9 @@ export default function Onboarding() {
       showsVerticalScrollIndicator={false}
     >
       <View style={s.header}>
-        <FridgeIcon color={palette.accent} size={56} active />
-        <Text style={[s.title, { color: palette.text }]}>Welcome to Pekko</Text>
-        <Text style={[s.sub, { color: palette.textSoft }]}>A quick setup so dates read right.</Text>
+        <FridgeIcon color={palette.text} size={48} active />
+        <Text style={[s.title, { color: palette.text }]}>Pekko Fridge</Text>
+        <Text style={[s.sub, { color: palette.textSoft }]}>Three questions so dates are read the right way. You can change them later in Settings.</Text>
       </View>
 
       <Text style={[s.q, { color: palette.text }]}>How are dates written where you are?</Text>
@@ -58,10 +67,12 @@ export default function Onboarding() {
             <Pressable
               key={f.value}
               onPress={() => { Haptics.selectionAsync().catch(() => {}); setRegion(f.value); }}
-              style={[s.opt, { backgroundColor: on ? palette.accent : palette.surface, borderColor: on ? palette.accent : palette.line }]}
+              style={[s.opt, { backgroundColor: on ? palette.text : palette.surface, borderColor: on ? palette.text : palette.line }]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
             >
-              <Text style={[s.optLabel, { color: on ? palette.accentInk : palette.text }]}>{f.label}</Text>
-              <Text style={[s.optEg, { color: on ? palette.accentInk : palette.textSoft }]}>{f.eg}</Text>
+              <Text style={[s.optLabel, { color: on ? palette.surface : palette.text }]}>{f.label}</Text>
+              <Text style={[s.optEg, { color: on ? palette.surface : palette.textSoft }]}>{f.eg}</Text>
             </Pressable>
           );
         })}
@@ -75,29 +86,27 @@ export default function Onboarding() {
 
       <View style={{ height: SPACE.xl }} />
       <PrimaryButton
-        label="Get started"
+        label="Open my fridge"
         palette={palette}
         onPress={() => updateSettings({ region, notifyDays: days, autoRemoveDays: autoDel, onboarded: true })}
       />
-      <Text style={[s.foot, { color: palette.textSoft }]}>You can always change these in Settings.</Text>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   content: { paddingHorizontal: SPACE.lg },
-  header: { alignItems: "center", gap: SPACE.sm, marginBottom: SPACE.xl },
-  title: { fontSize: 28, fontWeight: "900", marginTop: SPACE.sm },
-  sub: { fontSize: 14.5, fontWeight: "600" },
+  header: { gap: SPACE.sm, marginBottom: SPACE.xl },
+  title: { fontFamily: HAND, fontSize: 38, lineHeight: 46, marginTop: SPACE.sm },
+  sub: { fontSize: 15, lineHeight: 21 },
   q: { fontSize: 16, fontWeight: "800", marginBottom: SPACE.sm },
   opt: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md },
-  optLabel: { fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
+  optLabel: { fontSize: 16, fontWeight: "700" },
   optEg: { fontSize: 13, fontWeight: "600" },
-  stepper: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: RADIUS.lg, padding: SPACE.sm },
-  step: { width: 54, height: 54, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center" },
+  stepper: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: RADIUS.md, padding: SPACE.sm },
+  step: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   stepSign: { fontSize: 26, fontWeight: "800" },
   stepMid: { alignItems: "center" },
-  stepNum: { fontSize: 28, fontWeight: "900" },
+  stepNum: { fontSize: 28, fontWeight: "800" },
   stepUnit: { fontSize: 12.5, fontWeight: "700" },
-  foot: { fontSize: 13, fontWeight: "600", textAlign: "center", marginTop: SPACE.md },
 });

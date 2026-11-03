@@ -4,7 +4,7 @@
 //                     cross-env TZ=Asia/Tokyo     node tests/expiry.test.js
 //
 // Conclusion: if these tests pass in all TZs, the off-by-one is OCR-side (6 misread
-// as 7) or a correction-chip tap — NOT a serialization bug. Do NOT change the date
+// as 7) or a correction-chip tap. It is not a serialization bug. Do NOT change the date
 // logic unless these tests actually fail.
 const assert = require("assert");
 const { mk } = require("../src/lib/dateParser");
@@ -13,9 +13,9 @@ const { mk } = require("../src/lib/dateParser");
 const DAY = 86400000;
 function formatDate(d, region) {
   region = region || "DMY";
-  if (!d) return "—";
+  if (!d) return "No date";
   const dt = new Date(d);
-  if (isNaN(dt)) return "—";
+  if (isNaN(dt)) return "No date";
   const Y = dt.getFullYear();
   const M = String(dt.getMonth() + 1).padStart(2, "0");
   const D = String(dt.getDate()).padStart(2, "0");
@@ -45,7 +45,7 @@ const iso = JSON.stringify(sep16);           // produces "\"2026-09-16T...Z\""
 const reloaded = new Date(JSON.parse(iso));
 assert.strictEqual(reloaded.getFullYear(), 2026, "round-trip year");
 assert.strictEqual(reloaded.getMonth(), 8,       "round-trip month 0-based");
-assert.strictEqual(reloaded.getDate(), 16,       "round-trip day — fails if TZ shifts date");
+assert.strictEqual(reloaded.getDate(), 16,       "round-trip day, fails if TZ shifts the date");
 assert.strictEqual(formatDate(reloaded, "DMY"), "16/09/2026", "formatDate round-trip DMY");
 assert.strictEqual(formatDate(reloaded, "MDY"), "09/16/2026", "formatDate round-trip MDY");
 assert.strictEqual(formatDate(reloaded, "YMD"), "2026/09/16", "formatDate round-trip YMD");

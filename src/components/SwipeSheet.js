@@ -1,5 +1,3 @@
-// Bottom sheet in a transparent Modal — a true overlay that never resizes the
-// screen behind it. Smooth slide in/out; swipe down from anywhere to dismiss.
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, Animated, Easing, Pressable, PanResponder, StyleSheet, View, Dimensions, KeyboardAvoidingView } from "react-native";
 import { RADIUS, SPACE } from "../theme";
@@ -12,7 +10,6 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
   const ty = useRef(new Animated.Value(SCREEN_H)).current;
   const [render, setRender] = useState(visible);
 
-  // freeze the page-swipe pager while this sheet is open
   useEffect(() => {
     if (!visible) return undefined;
     addOverlay();
@@ -23,7 +20,6 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
     if (visible) {
       setRender(true);
       ty.setValue(SCREEN_H);
-      // wait one frame so the Modal is mounted before animating (no "teleport")
       const id = requestAnimationFrame(() => {
         Animated.timing(ty, { toValue: 0, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
       });
@@ -34,8 +30,8 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const downward = (g) => g.dy > 5 && g.dy > Math.abs(g.dx) + 2;
-  // grabOnStart: claim on touch-down (move-based responder negotiation is flaky
-  // inside a Modal on the New Architecture; the handle has no tappable children).
+  // Move-based responder negotiation is unreliable inside a Modal on the New
+  // Architecture, so the handle claims on touch-down.
   const makePan = (grabOnStart) =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => grabOnStart,
@@ -49,24 +45,21 @@ export default function SwipeSheet({ visible, onClose, palette, children, header
       },
       onPanResponderTerminationRequest: () => false,
     });
-  const panSheet = useRef(makePan(false)).current; // empty background of non-scroll sheets
-  const panHandle = useRef(makePan(true)).current;  // grabber + header (always)
+  const panSheet = useRef(makePan(false)).current;
+  const panHandle = useRef(makePan(true)).current;
 
   const opacity = ty.interpolate({ inputRange: [0, SCREEN_H], outputRange: [1, 0], extrapolate: "clamp" });
 
   return (
     <Modal visible={render} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[s.backdrop, { opacity }]}>
-        {/* behavior="padding" lifts the bottom-anchored sheet above the keyboard;
-            adjustResize/adjustPan are both dead inside a statusBarTranslucent
-            transparent Modal (FLAG_LAYOUT_NO_LIMITS), so the KAV is the only lifter here. */}
+        {/* adjustResize does nothing inside a translucent Modal, so the KeyboardAvoidingView lifts the sheet. */}
         <KeyboardAvoidingView behavior="padding" style={s.kav}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
           <Animated.View
             {...(scrollable ? {} : panSheet.panHandlers)}
             style={[s.sheet, { backgroundColor: palette.surface, transform: [{ translateY: ty }] }]}
           >
-            {/* grabber + header is always a drag-to-close handle (its own responder) */}
             <View {...panHandle.panHandlers} style={s.handle}>
               <View style={[s.grabber, { backgroundColor: palette.line }]} />
               {header}
@@ -83,9 +76,9 @@ const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   kav: { flex: 1, justifyContent: "flex-end" },
   sheet: {
-    borderTopLeftRadius: RADIUS.lg + 6, borderTopRightRadius: RADIUS.lg + 6,
+    borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg,
     paddingHorizontal: SPACE.lg, paddingTop: SPACE.md, paddingBottom: SPACE.xl,
   },
   handle: { paddingTop: 12, paddingBottom: SPACE.md },
-  grabber: { width: 52, height: 6, borderRadius: 3, alignSelf: "center", marginBottom: SPACE.sm },
+  grabber: { width: 44, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: SPACE.sm },
 });

@@ -3,8 +3,9 @@ import { View, Text, Pressable, Animated, PanResponder, useWindowDimensions, Sty
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
+import { useFonts } from "expo-font";
 import { AppProvider, useApp } from "./src/store";
-import { RADIUS, SPACE } from "./src/theme";
+import { SPACE } from "./src/theme";
 import { FridgeIcon, CameraIcon, GearIcon } from "./src/components/icons";
 import Onboarding from "./src/components/Onboarding";
 import FridgeScreen from "./src/screens/FridgeScreen";
@@ -27,7 +28,7 @@ function Shell() {
   const tabRef = useRef(0);
   const startRef = useRef(0);
   const overlayRef = useRef(false);
-  overlayRef.current = overlayOpen; // read by the PanResponder (avoids stale closure)
+  overlayRef.current = overlayOpen;
 
   const goTo = (i) => {
     const t = Math.max(0, Math.min(TABS.length - 1, i));
@@ -37,7 +38,6 @@ function Shell() {
     Animated.spring(tx, { toValue: -t * W, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
   };
 
-  // keep aligned if width changes (rotation)
   useEffect(() => { tx.setValue(-tabRef.current * W); }, [W]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pan = useRef(
@@ -62,8 +62,8 @@ function Shell() {
   if (!ready) {
     return (
       <View style={[styles.boot, { backgroundColor: palette.bg }]}>
-        <FridgeIcon color={palette.accent} size={56} active />
-        <ActivityIndicator color={palette.accent} />
+        <FridgeIcon color={palette.text} size={56} active />
+        <ActivityIndicator color={palette.textSoft} />
       </View>
     );
   }
@@ -90,9 +90,16 @@ function Shell() {
       >
         {TABS.map(({ key, label, Icon }, i) => {
           const on = i === tab;
-          const color = on ? palette.accent : palette.textSoft;
+          const color = on ? palette.text : palette.textSoft;
           return (
-            <Pressable key={key} style={styles.tab} onPress={() => goTo(i)}>
+            <Pressable
+              key={key}
+              style={styles.tab}
+              onPress={() => goTo(i)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+            >
+              <View style={[styles.tabMark, { backgroundColor: on ? palette.text : "transparent" }]} />
               <Icon color={color} active={on} />
               <Text style={[styles.tabLabel, { color }]}>{label}</Text>
             </Pressable>
@@ -104,6 +111,8 @@ function Shell() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ "Kalam-Bold": require("./assets/fonts/Kalam-Bold.ttf") });
+  if (!fontsLoaded) return null;
   return (
     <SafeAreaProvider>
       <AppProvider>
@@ -117,12 +126,8 @@ const styles = StyleSheet.create({
   boot: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACE.md },
   pagerClip: { flex: 1, overflow: "hidden" },
   pager: { flex: 1, flexDirection: "row" },
-  tabbar: {
-    flexDirection: "row",
-    borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, borderTopWidth: 1,
-    paddingTop: SPACE.sm,
-    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
-  },
-  tab: { flex: 1, alignItems: "center", gap: 3, paddingVertical: 4 },
-  tabLabel: { fontSize: 11.5, fontWeight: "700", letterSpacing: 0.3 },
+  tabbar: { flexDirection: "row", borderTopWidth: 1 },
+  tab: { flex: 1, alignItems: "center", gap: 3, paddingBottom: 4, minHeight: 56 },
+  tabMark: { width: 28, height: 3, marginBottom: SPACE.xs },
+  tabLabel: { fontSize: 12, fontWeight: "700" },
 });

@@ -1,5 +1,3 @@
-// Single source of truth: settings + fridge items, persisted to AsyncStorage.
-// One provider, hook accessors — no prop lists threaded through screens.
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useColorScheme, Alert, Platform, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,8 +5,6 @@ import * as Notifications from "expo-notifications";
 import { LIGHT, DARK } from "./theme";
 import { daysLeft } from "./lib/expiry";
 
-// Default ordered category list. Order = grid display order.
-// Top shelf: slots 0-1 (showUnit). Middle shelf: slots 2-4. WideDrawer: slot 5.
 export const DEFAULT_CATEGORIES = [
   { key: "dairy",  label: "Dairy",      skinId: "dairy",  icon: "dairy",  hidden: false },
   { key: "other",  label: "Other",      skinId: "other",  icon: "other",  hidden: false },
@@ -24,19 +20,18 @@ const KEY_SETTINGS = "pekko.settings.v1";
 import { DEFAULT_FRIDGE_NAME } from "./theme";
 
 const DEFAULT_SETTINGS = {
-  theme: "light",      // "light" | "dark" | "system" — bright by default
-  region: "DMY",       // "MDY" | "DMY" | "YMD"
+  theme: "light",
+  region: "DMY",
   notify: true,
   notifyDays: 2,
-  autoRemoveDays: 7, // delete items this many days after they expire
+  autoRemoveDays: 7,
   fridgeName: DEFAULT_FRIDGE_NAME,
-  rescued: 0,          // count of items removed before/on expiry date
-  categories: DEFAULT_CATEGORIES, // ordered list — replaces retired binOrder
+  rescued: 0,
+  categories: DEFAULT_CATEGORIES,
   onboarded: false,
-  batteryPromptShown: false, // one-time "exclude from battery optimization" nudge (Android)
+  batteryPromptShown: false,
 };
 
-// Notification action category: adds "Mark used" / "Snooze 2 days" buttons to each reminder.
 const REMINDER_CATEGORY = "pekko-reminder";
 
 const Ctx = createContext(null);
@@ -64,17 +59,15 @@ export function AppProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [items, setItems] = useState([]);
   const [ready, setReady] = useState(false);
-  const [overlays, setOverlays] = useState(0); // open sheets/modals (freezes page swipe)
+  const [overlays, setOverlays] = useState(0);
   const addOverlay = useCallback(() => setOverlays((n) => n + 1), []);
   const removeOverlay = useCallback(() => setOverlays((n) => Math.max(0, n - 1)), []);
 
-  // Latest state/handlers for the notification-response listener (registered once).
   const settingsRef = useRef(settings); settingsRef.current = settings;
   const itemsRef = useRef(items); itemsRef.current = items;
   const removeItemRef = useRef(null);
   const snoozeItemRef = useRef(null);
 
-  // Register the reminder action buttons once.
   useEffect(() => {
     Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY, [
       { identifier: "used", buttonTitle: "Mark used", options: { opensAppToForeground: true } },
@@ -82,7 +75,6 @@ export function AppProvider({ children }) {
     ]).catch(() => {});
   }, []);
 
-  // Handle taps on a reminder's action buttons.
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
       const action = resp.actionIdentifier;
@@ -101,15 +93,12 @@ export function AppProvider({ children }) {
         load(KEY_ITEMS, []),
       ]);
       const merged = { ...DEFAULT_SETTINGS, ...s };
-      // Migrate: ensure categories array (upgrade from versions using binOrder).
       if (!Array.isArray(merged.categories)) merged.categories = DEFAULT_CATEGORIES;
-      delete merged.binOrder; // retired in favour of categories order
+      delete merged.binOrder;
       setSettings(merged);
-      // migrate retired "packaged" category → "other"
       const migrated = (Array.isArray(it) ? it : []).map((i) =>
         i.category === "packaged" ? { ...i, category: "other" } : i
       );
-      // auto-remove items that expired more than autoRemoveDays ago
       const cutoff = Date.now() - (merged.autoRemoveDays ?? 7) * 86400000;
       const kept = migrated.filter((i) => !(i.exp && new Date(i.exp).getTime() < cutoff));
       setItems(kept);
@@ -142,15 +131,15 @@ export function AppProvider({ children }) {
       const when = new Date(item.exp);
       when.setDate(when.getDate() - settings.notifyDays);
       when.setHours(9, 0, 0, 0);
-      if (when <= new Date()) return null; // already too late to warn
+      if (when <= new Date()) return null;
       return await Notifications.scheduleNotificationAsync({
         content: {
           title: "Expiring soon",
           body: `${item.name} expires in ${settings.notifyDays} day${settings.notifyDays === 1 ? "" : "s"}.`,
-          categoryIdentifier: REMINDER_CATEGORY, // adds Mark used / Snooze buttons
+          categoryIdentifier: REMINDER_CATEGORY,
           data: { itemId: item.id },
         },
-        // SDK 56 wants a typed trigger, not a bare Date.
+        // SDK 56 needs a typed trigger, not a bare Date.
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
       });
     } catch {
@@ -158,8 +147,8 @@ export function AppProvider({ children }) {
     }
   }, [settings.notify, settings.notifyDays]);
 
-  // One-time nudge (Android only) to exclude Pekko from battery optimization, so
-  // aggressive OEM battery managers don't silently kill scheduled reminders.
+  // Some Android phones drop scheduled reminders unless the app is exempt from battery
+  // optimisation.
   const maybeBatteryPrompt = useCallback(() => {
     if (Platform.OS !== "android" || settingsRef.current.batteryPromptShown) return;
     setSettings((s) => ({ ...s, batteryPromptShown: true }));
@@ -177,10 +166,9 @@ export function AppProvider({ children }) {
     const full = { id: String(Date.now()), createdAt: Date.now(), photos: [], ...item };
     full.notifId = await scheduleReminder(full);
     setItems((prev) => [full, ...prev]);
-    if (full.notifId) maybeBatteryPrompt(); // first real reminder → nudge once
+    if (full.notifId) maybeBatteryPrompt();
   }, [scheduleReminder, maybeBatteryPrompt]);
 
-  // Snooze: reschedule this item's reminder for ~2 days from now.
   const snoozeItem = useCallback(async (id) => {
     const item = itemsRef.current.find((i) => i.id === id);
     if (!item) return;

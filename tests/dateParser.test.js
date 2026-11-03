@@ -1,6 +1,6 @@
 // Run: npm test   (plain node, no framework)
 const assert = require("assert");
-const { parseLabel } = require("../src/lib/dateParser");
+const { parseLabel, isLabelPhrase } = require("../src/lib/dateParser");
 
 function eq(d, y, m, day, msg) {
   assert.ok(d, msg + " (got null)");
@@ -57,7 +57,7 @@ eq(r.exp, 2027, 7, 2, "worded date saved as expiry");
 r = parseLabel("20/5/27", "MDY");
 eq(r.exp, 2027, 5, 20, "auto-correct impossible month");
 
-// OCR turned the slash into a space — still parse the full day, not month-end
+// OCR turned the slash into a space; still parse the full day, not month-end
 r = parseLabel("EXP 2024/01 28", "DMY");
 eq(r.exp, 2024, 1, 28, "year-first with space separator");
 
@@ -105,3 +105,14 @@ assert.strictEqual(r.exp.getMonth(), 8, "pinning: month index 8 = September");
 assert.strictEqual(r.exp.getDate(), 16, "pinning: day 16");
 
 console.log("✓ all dateParser tests passed");
+
+// OCR can split "mindestens haltbar bis" over two lines; neither half is a name.
+r = parseLabel("mindestens\nhaltbar bis:\n16.09.2026\nVollmilch", "DMY");
+assert.strictEqual(r.guessName, "Vollmilch", "split German best-before lines skipped");
+assert.ok(isLabelPhrase("mindestens"), "mindestens alone is a label word");
+assert.ok(isLabelPhrase("BEST BEFORE END"), "best before is a label phrase");
+assert.ok(isLabelPhrase("LOT 4471"), "lot line is a label phrase");
+assert.ok(!isLabelPhrase("Vollmilch"), "a product name is not a label phrase");
+assert.ok(!isLabelPhrase("Gut & Günstig"), "a brand is not a label phrase");
+console.log("✓ label phrase tests passed");
+

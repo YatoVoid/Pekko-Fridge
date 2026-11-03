@@ -1,4 +1,3 @@
-// Thin wrappers over expo-image-picker. Return a local uri or null.
 import * as ImagePicker from "expo-image-picker";
 
 const OPTS = { quality: 0.4, allowsEditing: false };

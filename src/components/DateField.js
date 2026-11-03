@@ -1,5 +1,3 @@
-// Date control: the native OS date prompt for picking an exact day, plus quick
-// relative chips (+7d ... +1y) so far-future expiries don't need endless paging.
 import React, { useState } from "react";
 import { View, Pressable, Text, Platform, StyleSheet } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -19,7 +17,6 @@ export default function DateField({ value, onChange, palette, region, style, tex
   const [show, setShow] = useState(false);
   const current = value ? new Date(value) : new Date();
 
-  // Add relative to the chosen date, or to today when none is set.
   const bump = ({ unit, n }) => {
     Haptics.selectionAsync().catch(() => {});
     const base = value ? new Date(value) : new Date();
@@ -34,12 +31,14 @@ export default function DateField({ value, onChange, palette, region, style, tex
     <>
       <Pressable
         onPress={() => { Haptics.selectionAsync().catch(() => {}); setShow(true); }}
-        style={({ pressed }) => [s.field, { backgroundColor: palette.surfaceAlt, borderColor: palette.line, opacity: pressed ? 0.7 : 1 }, style]}
+        style={({ pressed }) => [s.field, { backgroundColor: palette.surface, borderColor: palette.line, opacity: pressed ? 0.7 : 1 }, style]}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `Expiry date ${formatDate(value, region)}. Change` : "Set expiry date"}
       >
         <Text style={[s.text, { color: value ? palette.text : palette.textSoft }, textStyle]}>
           {value ? formatDate(value, region) : "Set date"}
         </Text>
-        <Text style={[s.edit, { color: palette.accent }]}>Edit</Text>
+        <Text style={[s.edit, { color: palette.textSoft }]}>Change</Text>
       </Pressable>
 
       <View style={s.quickRow}>
@@ -49,7 +48,7 @@ export default function DateField({ value, onChange, palette, region, style, tex
             onPress={() => bump(q)}
             style={({ pressed }) => [s.quick, { backgroundColor: palette.surface, borderColor: palette.line, opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text style={[s.quickText, { color: palette.accent }]}>{q.label}</Text>
+            <Text style={[s.quickText, { color: palette.text }]}>{q.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -74,9 +73,9 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     borderWidth: 1, borderRadius: RADIUS.md, paddingHorizontal: SPACE.md, paddingVertical: 12,
   },
-  text: { fontSize: 20, fontWeight: "900", letterSpacing: 0.4 },
-  edit: { fontSize: 13, fontWeight: "800" },
+  text: { fontSize: 20, fontWeight: "800" },
+  edit: { fontSize: 13.5, fontWeight: "700", textDecorationLine: "underline" },
   quickRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.xs, marginTop: SPACE.sm },
-  quick: { borderWidth: 1, borderRadius: RADIUS.pill, paddingHorizontal: 12, paddingVertical: 7 },
-  quickText: { fontSize: 13, fontWeight: "800" },
+  quick: { borderWidth: 1, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 9, minWidth: 48, alignItems: "center" },
+  quickText: { fontSize: 13.5, fontWeight: "700" },
 });

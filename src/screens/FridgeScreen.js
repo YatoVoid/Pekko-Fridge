@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, Animated, Alert, Easing, StyleSheet }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
-import { resolveCat, CATEGORY_SKINS, DEFAULT_FRIDGE_NAME, RADIUS, SPACE } from "../theme";
+import { resolveCat, CATEGORY_SKINS, DEFAULT_FRIDGE_NAME, RADIUS, SPACE, HAND } from "../theme";
 import { FridgeBody, Shelf, Bin, WideDrawer } from "../components/Fridge";
 import { EditIcon, CheckIcon } from "../components/icons";
 import CategoryDrawer from "../components/CategoryDrawer";
@@ -13,22 +13,20 @@ import SoonStrip from "../components/SoonStrip";
 import { daysLeft } from "../lib/expiry";
 
 const DEFAULT_KEYS = new Set(DEFAULT_CATEGORIES.map((c) => c.key));
-const MAX_FOLDERS = 9; // total folders (built-in + custom) a user may keep
+const MAX_FOLDERS = 9;
 
 export default function FridgeScreen({ active = true }) {
   const { palette, settings, items, removeItem, updateItem, updateSettings, addOverlay, removeOverlay } = useApp();
   const insets = useSafeAreaInsets();
   const [drawerKey, setDrawerKey] = useState(null);
-  // Track the open item by id and derive it live from the store, so edits
-  // (date, name, photos) re-render the detail sheet instead of showing a stale snapshot.
+  // Look the open item up by id so edits show in the open sheet.
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [naming, setNaming] = useState(false); // fridge-name inline edit
+  const [naming, setNaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
-  // Edit-mode (folders) state.
   const [showGrid, setShowGrid] = useState(false);
-  const [gridArea, setGridArea] = useState(null); // { width, height }
+  const [gridArea, setGridArea] = useState(null);
   const [renamingKey, setRenamingKey] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const editA = useRef(new Animated.Value(0)).current;
@@ -36,7 +34,6 @@ export default function FridgeScreen({ active = true }) {
   const cats = settings.categories || DEFAULT_CATEGORIES;
   const visibleCats = cats.filter((c) => !c.hidden);
   const visibleKeySet = new Set(visibleCats.map((c) => c.key));
-  // "other" bucket shows its own items + items from hidden/unknown categories
   const inCat = (key) =>
     key === "other"
       ? items.filter((i) => i.category === "other" || !visibleKeySet.has(i.category))
@@ -58,14 +55,11 @@ export default function FridgeScreen({ active = true }) {
 
   const detail = detailId ? items.find((i) => i.id === detailId) || null : null;
 
-  // ── Fridge-name rename (unchanged) ─────────────────────────────────────────
   const commitName = () => {
     updateSettings({ fridgeName: nameDraft.trim() || DEFAULT_FRIDGE_NAME });
     setNaming(false);
   };
 
-  // ── Edit-mode plumbing ─────────────────────────────────────────────────────
-  // Refs so the "exit on navigate away / unmount" effects never read stale state.
   const editingRef = useRef(false); editingRef.current = editing;
   const renamingKeyRef = useRef(renamingKey); renamingKeyRef.current = renamingKey;
   const renameDraftRef = useRef(renameDraft); renameDraftRef.current = renameDraft;
@@ -87,7 +81,7 @@ export default function FridgeScreen({ active = true }) {
     setNaming(false);
     setShowGrid(true);
     setEditing(true);
-    addOverlay(); // freezes the App-level horizontal page swipe
+    addOverlay();
     Animated.timing(editA, { toValue: 1, duration: 320, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start();
   };
 
@@ -103,18 +97,15 @@ export default function FridgeScreen({ active = true }) {
     });
   }, [commitRename, removeOverlay, editA]);
 
-  // Latest exitEdit for the effects below (avoids stale closures).
   const exitEditRef = useRef(exitEdit); exitEditRef.current = exitEdit;
 
-  // User navigated to another tab while editing → auto-save (already persisted) and exit.
   useEffect(() => {
     if (!active) exitEditRef.current();
   }, [active]);
 
-  // Unmount safety net — never leak the overlay counter (would freeze page swipe).
+  // Never leak the overlay counter; it would freeze page swipes.
   useEffect(() => () => { if (editingRef.current) removeOverlay(); }, [removeOverlay]);
 
-  // ── Folder operations (all persist immediately via updateSettings) ─────────
   const reorder = (nextCats) => updateSettings({ categories: nextCats });
   const startRename = (cat) => { setRenameDraft(cat.label); setRenamingKey(cat.key); };
   const toggleHidden = (key) => {
@@ -149,7 +140,6 @@ export default function FridgeScreen({ active = true }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const used = new Set(catsRef.current.map((c) => c.skinId));
     const skin = CATEGORY_SKINS.find((sk) => !used.has(sk.key)) || CATEGORY_SKINS[catsRef.current.length % CATEGORY_SKINS.length];
-    // Avoid duplicate "New folder" tiles — suffix a number if the name is taken.
     const names = new Set(catsRef.current.map((c) => c.label));
     let label = "New folder";
     for (let n = 2; names.has(label); n++) label = `New folder ${n}`;
@@ -159,7 +149,6 @@ export default function FridgeScreen({ active = true }) {
     setRenamingKey(key);
   };
 
-  // ── Morph interpolations ───────────────────────────────────────────────────
   const pencilStyle = {
     opacity: editA.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
     transform: [
@@ -174,9 +163,7 @@ export default function FridgeScreen({ active = true }) {
       { scale: editA.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
     ],
   };
-  // Sequenced crossfade over an OPAQUE stage: the fridge (and its heavy bin
-  // shadows) fades OUT first, then the tiles fade IN — so the fridge's shadows
-  // never bleed through a half-transparent overlay (that was the dark halo).
+  // Fade the fridge out before the tiles fade in, or its shadows show through.
   const bodyStyle = {
     opacity: editA.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0], extrapolate: "clamp" }),
   };
@@ -184,10 +171,10 @@ export default function FridgeScreen({ active = true }) {
     opacity: editA.interpolate({ inputRange: [0.3, 1], outputRange: [0, 1], extrapolate: "clamp" }),
     transform: [{ scale: editA.interpolate({ inputRange: [0, 1], outputRange: [1.03, 1] }) }],
   };
-  const btnBorder = editA.interpolate({ inputRange: [0, 1], outputRange: [palette.line, palette.accent] });
+  const btnBorder = editA.interpolate({ inputRange: [0, 1], outputRange: [palette.line, palette.text] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: SPACE.xl + 12 }}>
+    <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: SPACE.xl + 8 }}>
       <Animated.View style={[s.editBtn, { backgroundColor: palette.surface, borderColor: btnBorder }]}>
         <Pressable
           onPress={() => (editingRef.current ? exitEdit() : enterEdit())}
@@ -199,7 +186,7 @@ export default function FridgeScreen({ active = true }) {
             <EditIcon color={palette.textSoft} size={19} />
           </Animated.View>
           <Animated.View style={[s.iconStack, checkStyle]}>
-            <CheckIcon color={palette.accent} size={20} active />
+            <CheckIcon color={palette.text} size={20} active />
           </Animated.View>
         </Pressable>
       </Animated.View>
@@ -215,25 +202,31 @@ export default function FridgeScreen({ active = true }) {
             maxLength={28}
             placeholder={DEFAULT_FRIDGE_NAME}
             placeholderTextColor={palette.textSoft}
-            style={[s.pill, s.pillInput, { backgroundColor: palette.surface, borderColor: palette.accent, color: palette.text }]}
+            style={[s.pill, s.pillInput, { borderColor: palette.text, color: palette.text }]}
           />
         ) : (
           <Pressable
             onPress={() => {
-              if (editingRef.current) return; // name locked while editing folders
+              if (editingRef.current) return;
               Haptics.selectionAsync().catch(() => {});
               setNameDraft(settings.fridgeName);
               setNaming(true);
             }}
-            style={[s.pill, { backgroundColor: palette.surface, borderColor: palette.line }]}
+            style={s.pill}
+            accessibilityRole="button"
+            accessibilityHint="Rename your fridge"
           >
             <Text style={[s.pillName, { color: palette.text }]}>{settings.fridgeName}</Text>
             <Text style={[s.pillSub, { color: palette.textSoft }]}>
               {editing
-                ? "Drag to reorder · tap to rename"
+                ? "Drag notes to reorder. Tap a name to rename it."
                 : total === 0
-                ? "Empty for now · tap to rename"
-                : `${total} item${total === 1 ? "" : "s"}${expiring ? ` · ${expiring} need${expiring === 1 ? "s" : ""} attention` : ""}${settings.rescued > 0 ? ` · ${settings.rescued} rescued` : ""}`}
+                ? "Nothing in here yet"
+                : [
+                    `${total} item${total === 1 ? "" : "s"}`,
+                    expiring ? `${expiring} expiring soon` : null,
+                    settings.rescued > 0 ? `${settings.rescued} used in time` : null,
+                  ].filter(Boolean).join(", ")}
             </Text>
           </Pressable>
         )}
@@ -242,9 +235,9 @@ export default function FridgeScreen({ active = true }) {
       <SoonStrip items={soonItems} palette={palette} editA={editA} editing={editing} onOpenItem={(it) => setDetailId(it.id)} />
 
       {items.length === 0 && !editing && (
-        <View style={[s.emptyHint, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+        <View style={s.emptyHint}>
           <Text style={[s.emptyHintText, { color: palette.textSoft }]}>
-            Your fridge is empty. Tap Scan below to add your first item.
+            Scan a date label to add your first item.
           </Text>
         </View>
       )}
@@ -331,25 +324,18 @@ export default function FridgeScreen({ active = true }) {
 
 const s = StyleSheet.create({
   editBtn: {
-    // Vertically centered on the "My Fridge" pill (pill top = paddingTop SPACE.xl+12,
-    // pill ≈73 tall → center ≈+36; button is 40 tall so top = paddingTop + 16).
-    position: "absolute", right: SPACE.lg, top: SPACE.xl + 28, zIndex: 5,
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+    position: "absolute", right: SPACE.lg, top: SPACE.xl + 14, zIndex: 5,
+    width: 44, height: 44, borderRadius: RADIUS.md, borderWidth: 1.5,
   },
   editBtnHit: { flex: 1, alignItems: "center", justifyContent: "center" },
   iconStack: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  top: { paddingHorizontal: SPACE.lg, marginBottom: SPACE.md },
-  pill: {
-    alignSelf: "center", borderRadius: RADIUS.pill, borderWidth: 1,
-    paddingHorizontal: SPACE.lg + 6, paddingVertical: SPACE.sm + 2, alignItems: "center",
-    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 },
-  },
-  pillInput: { minWidth: 230, textAlign: "center", fontSize: 22, fontWeight: "900" },
-  pillName: { fontSize: 24, fontWeight: "900", letterSpacing: 0.3 },
-  pillSub: { fontSize: 13, fontWeight: "600", marginTop: 2 },
+  top: { paddingHorizontal: SPACE.lg, paddingRight: SPACE.lg + 56, marginBottom: SPACE.md },
+  pill: { alignSelf: "flex-start" },
+  pillInput: { minWidth: 220, fontFamily: HAND, fontSize: 32, borderBottomWidth: 2, paddingVertical: 0 },
+  pillName: { fontFamily: HAND, fontSize: 34, lineHeight: 42 },
+  pillSub: { fontSize: 13.5, fontWeight: "600" },
   cavityPad: { flex: 1, paddingHorizontal: SPACE.md },
   stage: { flex: 1 },
-  emptyHint: { marginHorizontal: SPACE.lg, marginBottom: SPACE.sm, borderRadius: RADIUS.lg, borderWidth: 1, paddingVertical: SPACE.md, paddingHorizontal: SPACE.lg },
-  emptyHintText: { fontSize: 13.5, fontWeight: "600", textAlign: "center", lineHeight: 19 },
+  emptyHint: { marginHorizontal: SPACE.lg, marginBottom: SPACE.sm },
+  emptyHintText: { fontSize: 14, fontWeight: "600" },
 });

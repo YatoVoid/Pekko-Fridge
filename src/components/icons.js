@@ -1,5 +1,3 @@
-// Custom line-art tab icons — hand-drawn paths, soft rounded strokes.
-// Stroke recolors with theme; fill stays empty for the MUJI line-art feel.
 import React from "react";
 import Svg, { Path, Rect, Circle, Line } from "react-native-svg";
 
@@ -39,7 +37,6 @@ export function GearIcon({ color, size = 26, active }) {
   );
 }
 
-// Pencil — "edit this" affordance, same soft line-art language.
 export function EditIcon({ color, size = 26, active }) {
   const w = active ? 2.4 : 1.9;
   return (
@@ -51,7 +48,6 @@ export function EditIcon({ color, size = 26, active }) {
   );
 }
 
-// Checkmark — "done editing" confirm, pairs with EditIcon in the morphing button.
 export function CheckIcon({ color, size = 26, active }) {
   const w = active ? 2.6 : 2.2;
   return (
@@ -61,7 +57,6 @@ export function CheckIcon({ color, size = 26, active }) {
   );
 }
 
-// Plus — "add a folder" tile.
 export function PlusIcon({ color, size = 26 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -70,7 +65,6 @@ export function PlusIcon({ color, size = 26 }) {
   );
 }
 
-// Close (X) — delete badge on a custom folder tile.
 export function CloseIcon({ color, size = 26 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -79,7 +73,6 @@ export function CloseIcon({ color, size = 26 }) {
   );
 }
 
-// Eye / Eye-off — hide-visibility badge on a built-in folder tile.
 export function EyeIcon({ color, size = 26 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

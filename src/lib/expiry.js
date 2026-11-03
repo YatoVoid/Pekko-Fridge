@@ -1,10 +1,9 @@
-// Turns an expiry date into a human countdown + a tone for the badge color.
 const DAY = 86400000;
 
 export function formatDate(d, region = "DMY") {
-  if (!d) return "—";
+  if (!d) return "No date";
   const dt = new Date(d);
-  if (isNaN(dt)) return "—";
+  if (isNaN(dt)) return "No date";
   const Y = dt.getFullYear();
   const M = String(dt.getMonth() + 1).padStart(2, "0");
   const D = String(dt.getDate()).padStart(2, "0");
@@ -23,7 +22,6 @@ export function daysLeft(expISO) {
   return Math.round((b - a) / DAY);
 }
 
-// tone keys map to theme.badge.* colors
 export function expiryBadge(expISO) {
   const d = daysLeft(expISO);
   if (d === null) return { label: "No date", tone: "neutral" };

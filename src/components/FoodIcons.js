@@ -1,5 +1,4 @@
-// Filled, colored kawaii food icons (skeuomorphic, per FridgeUiRedesignSpec).
-// CategoryIcon ignores stroke color — these are intentionally multi-color.
+// CategoryIcon ignores the stroke colour; these icons carry their own.
 import React from "react";
 import Svg, { Path, Circle, Rect, Ellipse, G } from "react-native-svg";
 
@@ -62,13 +61,11 @@ function Soup() {
 function Veg() {
   return (
     <>
-      {/* broccoli */}
       <Rect x="11" y="26" width="7" height="16" rx="3.5" fill="#B7CC8E" />
       <Circle cx="11" cy="22" r="8" fill="#97BE7E" />
       <Circle cx="19" cy="19" r="9" fill="#A2C888" />
       <Circle cx="14" cy="25" r="7" fill="#8FB873" />
       <Circle cx="24" cy="24" r="6" fill="#A2C888" />
-      {/* carrot */}
       <Path d="M30 22 L41 22 L36 42 a.6 .6 0 0 1-1 0 Z" fill="#E7A865" />
       <Path d="M35.5 21 V17 M35.5 18 C34 16.5 32.5 17 32 18.8 M35.5 18 C37 16.5 38.5 17 39 18.8" stroke="#8FB873" strokeWidth={2.4} fill="none" strokeLinecap="round" />
       <Path d="M33.5 27 H37.5 M34 31 H37" stroke="#D89149" strokeWidth={2} strokeLinecap="round" />

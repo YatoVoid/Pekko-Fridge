@@ -1,14 +1,13 @@
-// Full info for one item: photos + editable name & expiry + remove.
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Image, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { RADIUS, SPACE, resolveCat, catColors } from "../theme";
+import { RADIUS, SPACE, HAND, resolveCat, catColors } from "../theme";
 import { useApp } from "../store";
 import { CategoryIcon } from "./FoodIcons";
 import { ExpiryBadge } from "./ui";
 import { formatDate } from "../lib/expiry";
 import { takePhoto, pickFromLibrary } from "../lib/photos";
-import { photosOf } from "./Fridge";
+import { photosOf, Magnet } from "./Fridge";
 import SwipeSheet from "./SwipeSheet";
 import DateField from "./DateField";
 
@@ -41,9 +40,10 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
   return (
     <SwipeSheet visible={!!item} onClose={onClose} palette={palette}>
       <View style={s.head}>
-        <View style={[s.chip, { backgroundColor: cc.tint }]}>
+        <View style={s.chip}>
+          <Magnet color={cc.accent} size={14} />
           <CategoryIcon catKey={cat.icon || cat.key} size={20} />
-          <Text style={[s.chipText, { color: cc.ink }]}>{cat.label}</Text>
+          <Text style={[s.chipText, { color: palette.text }]}>{cat.label}</Text>
         </View>
         <ExpiryBadge exp={item.exp} palette={palette} />
       </View>
@@ -56,11 +56,17 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
           onSubmitEditing={commitName}
           autoFocus
           maxLength={40}
-          style={[s.nameInput, { color: palette.text, borderColor: palette.accent, backgroundColor: palette.surfaceAlt }]}
+          style={[s.nameInput, { color: palette.text, borderColor: palette.text }]}
         />
       ) : (
-        <Pressable onPress={() => { Haptics.selectionAsync().catch(() => {}); setDraft(item.name); setEditingName(true); }}>
-          <Text style={[s.name, { color: palette.text }]}>{item.name} <Text style={[s.editHint, { color: palette.accent }]}>Edit</Text></Text>
+        <Pressable
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); setDraft(item.name); setEditingName(true); }}
+          accessibilityRole="button"
+          accessibilityHint="Rename this item"
+          style={s.nameRow}
+        >
+          <Text style={[s.name, { color: palette.text }]}>{item.name}</Text>
+          <Text style={[s.editHint, { color: palette.textSoft }]}>Rename</Text>
         </Pressable>
       )}
 
@@ -71,18 +77,18 @@ export default function ItemDetail({ item, palette, region, onClose, onUpdate, o
           </Pressable>
         ))}
         <Pressable onPress={() => addPhoto(false)} onLongPress={() => addPhoto(true)} style={[s.addShot, { borderColor: palette.line }]}>
-          <Text style={[s.addPlus, { color: palette.textSoft }]}>＋</Text>
+          <Text style={[s.addPlus, { color: palette.textSoft }]}>+</Text>
           <Text style={[s.addLabel, { color: palette.textSoft }]}>Add photo</Text>
         </Pressable>
       </ScrollView>
       {photos.length > 0 && (
-        <Text style={[s.hint, { color: palette.textSoft }]}>Hold a photo to remove it · hold ＋ to pick from library</Text>
+        <Text style={[s.hint, { color: palette.textSoft }]}>Hold a photo to remove it. Hold + to pick one from your library.</Text>
       )}
 
       <Text style={[s.fieldLabel, { color: palette.textSoft }]}>Expires</Text>
       <DateField value={item.exp} onChange={(d) => onUpdate(item.id, { exp: d })} palette={palette} region={region} />
 
-      <View style={[s.facts, { backgroundColor: palette.surfaceAlt }]}>
+      <View style={[s.facts, { borderColor: palette.line }]}>
         {item.mfg ? <Fact label="Made" value={formatDate(item.mfg, region)} palette={palette} /> : null}
         <Fact label="Added" value={formatDate(item.createdAt, region)} palette={palette} />
       </View>
@@ -112,11 +118,12 @@ function Fact({ label, value, palette }) {
 
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: SPACE.sm },
-  chip: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: RADIUS.pill, paddingHorizontal: 12, paddingVertical: 7 },
-  chipText: { fontSize: 13.5, fontWeight: "800" },
-  name: { fontSize: 26, fontWeight: "900", marginBottom: SPACE.md },
-  editHint: { fontSize: 14, fontWeight: "800" },
-  nameInput: { fontSize: 24, fontWeight: "900", borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: SPACE.md, paddingVertical: 10, marginBottom: SPACE.md },
+  chip: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chipText: { fontSize: 14, fontWeight: "700" },
+  nameRow: { flexDirection: "row", alignItems: "baseline", gap: SPACE.sm, marginBottom: SPACE.md, flexWrap: "wrap" },
+  name: { fontFamily: HAND, fontSize: 34, lineHeight: 42 },
+  editHint: { fontSize: 13.5, fontWeight: "700", textDecorationLine: "underline" },
+  nameInput: { fontFamily: HAND, fontSize: 30, borderBottomWidth: 2, paddingVertical: 2, marginBottom: SPACE.md },
   gallery: { gap: SPACE.sm, paddingVertical: 2 },
   shotWrap: { borderRadius: RADIUS.md, overflow: "hidden" },
   shot: { width: 200, height: 200, borderRadius: RADIUS.md },
@@ -124,11 +131,11 @@ const s = StyleSheet.create({
   addPlus: { fontSize: 30, fontWeight: "700" },
   addLabel: { fontSize: 13, fontWeight: "700" },
   hint: { fontSize: 11.5, marginTop: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 1, marginTop: SPACE.md, marginBottom: 6 },
-  facts: { borderRadius: RADIUS.md, padding: SPACE.md, gap: SPACE.sm, marginTop: SPACE.md },
+  fieldLabel: { fontSize: 13, fontWeight: "700", marginTop: SPACE.md, marginBottom: 6 },
+  facts: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: SPACE.sm + 2, gap: SPACE.sm, marginTop: SPACE.md },
   factRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
   factLabel: { fontSize: 13, fontWeight: "700" },
   factVal: { fontSize: 15, fontWeight: "600" },
-  remove: { marginTop: SPACE.lg, borderWidth: 1.5, borderRadius: RADIUS.lg, paddingVertical: 15, alignItems: "center" },
+  remove: { marginTop: SPACE.lg, borderWidth: 1.5, borderRadius: RADIUS.md, paddingVertical: 15, alignItems: "center" },
   removeText: { fontSize: 15.5, fontWeight: "800" },
 });

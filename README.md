@@ -1,11 +1,17 @@
-<img width="1024" height="500" alt="feature-1024x500-2-ToolsChimp com" src="https://github.com/user-attachments/assets/17be71b8-c0e8-4e43-8c01-7f63d10381c8" />
-
-
 # Pekko Fridge
 
-Pekko Fridge is a cute, private expiry date tracker for the things you buy: food, medicine, cosmetics, and anything else with a date on it. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
+![Pekko Fridge: the fridge door with folders pinned up as notes, and one item's detail](assets/store/feature-1024x500.png)
 
-Point the camera at a product's date label. Pekko reads the date on your device, works out how many days are left, and saves the item into your fridge so you always know what to use first.
+Pekko Fridge is a private expiry date tracker for the things you buy: food, medicine, cosmetics, and anything else with a date on it. Everything runs on your phone. There is no internet connection, no account, and no data collection, and the app is free.
+
+Point the camera at a product's date label. Pekko reads the date on your device, works out how many days are left, and puts the item on your fridge so you know what to use first.
+
+<p>
+<img src="assets/store/phone/01_fridge.png" width="200" alt="The fridge: folders as paper notes under coloured magnets, with a Use first strip above">
+<img src="assets/store/phone/02_category.png" width="200" alt="A folder opened, listing its items with days left">
+<img src="assets/store/phone/03_item.png" width="200" alt="One item: name, expiry date and quick +7d to +1y buttons">
+<img src="assets/store/phone/05_settings.png" width="200" alt="Settings: fridge name, appearance, date format, reminders">
+</p>
 
 ## What it does
 
@@ -13,13 +19,13 @@ Scan dates with the camera. A crop guide shows what will be read, then Pekko rea
 
 Keep photos of each item. You can attach pictures of the label or the product so you remember exactly what it is. The photos stay on your phone.
 
-Organise your fridge into folders. You start with Dairy, Cheese, Meat, Soup, Vegetables, and Other, each with its own drawn icon. From there you make them your own. Add your own folders, rename them, drag to reorder, or hide the ones you don't use, all straight from the fridge screen.
+Organise your fridge into folders. You start with Dairy, Cheese, Meat, Soup, Vegetables, and Other, each pinned to the fridge door as a note under its own coloured magnet. Add your own folders, rename them, drag to reorder, or hide the ones you don't use, all from the fridge screen.
 
-See what matters at a glance. Every item shows how many days are left, its expiry date, and when it was added, with a soft colour that shifts as the date gets closer. A "use first" strip surfaces whatever is closest to expiring.
+See what to use first. Every item shows how many days are left, ringed in a colour that gets louder as the date gets closer. A "Use first" strip under a red magnet lists everything that expires within a week.
 
-Get a gentle reminder. Turn on notifications and Pekko nudges you before an item is about to expire. Right from the reminder you can tap "Mark used" or "Snooze 2 days" without opening the app.
+Get a reminder. Turn on notifications and Pekko tells you before an item expires. Right from the reminder you can tap "Mark used" or "Snooze 2 days" without opening the app.
 
-Make it yours. Rename your fridge, switch between light, dark, and system themes, and choose the date format that matches your region.
+Settings. Rename your fridge, switch between light, dark, and system themes, and choose the date format used where you live.
 
 ## Privacy
 
@@ -33,7 +39,7 @@ The scan flow. The camera captures a cropped photo of the date label. Skia sharp
 
 State. A single store holds your settings and items and saves to local storage on every change, so nothing is ever lost, even if the app is closed part way through an edit.
 
-Interface. A swipe pager for Fridge, Scan and Settings, a fridge you can rearrange (folders drag, rename, add and hide in an edit mode), and hand drawn SVG icons throughout. No emoji anywhere.
+Interface. A swipe pager for Fridge, Scan and Settings, and a fridge door you can rearrange (drag, rename, add and hide folders in an edit mode). Names are written in Kalam, a marker hand by the Indian Type Foundry (SIL Open Font License, see `assets/fonts/Kalam-OFL.txt`). The food icons are drawn as SVG.
 
 Reminders. Local notifications fire before an item expires, with "Mark used" and "Snooze 2 days" buttons.
 
@@ -49,7 +55,7 @@ Reminders. Local notifications fire before an item expires, with "Mark used" and
 | Date parsing | Custom engine in plain JavaScript (Node unit tests) |
 | Local storage | `@react-native-async-storage/async-storage` (no cloud) |
 | Notifications | `expo-notifications`, scheduled locally |
-| Graphics and UI | `react-native-svg`, `expo-linear-gradient`, `expo-haptics`, `react-native-safe-area-context` |
+| Graphics and UI | `react-native-svg`, `expo-font` (Kalam), `expo-haptics`, `react-native-safe-area-context` |
 | Build and release | EAS Build, Android App Bundle, Google Play |
 
 No backend, no analytics, no third party network calls.
@@ -60,7 +66,7 @@ No backend, no analytics, no third party network calls.
 App.js                  Navigation shell (swipe pager and bottom tab bar)
 src/
   store.js              Single source of truth for settings and items, saved locally
-  theme.js              Colours, spacing, category skins
+  theme.js              Colours, spacing, magnet colour per folder
   screens/
     FridgeScreen.js     The fridge and the folder edit mode
     ScannerScreen.js    Camera and scan flow
@@ -83,6 +89,6 @@ Copyright 2026 Wali Lambert. All rights reserved. The code is public so you can 
 
 ## Support
 
-Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little money or hassle, you can leave a tip. Every coffee genuinely helps me keep it updated and add new features.
+Pekko is made by one person, in my own time, and given away for free with no ads, no tracking, and no paywall. If it saves you a little money or hassle, you can leave a tip. Tips help me keep it updated.
 
 <a href="https://buymeacoffee.com/walilambere" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="60"></a>

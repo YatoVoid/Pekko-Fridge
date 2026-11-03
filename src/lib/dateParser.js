@@ -1,23 +1,16 @@
-﻿// Local date-parsing engine (v2). Pure JS, node-testable.
-// Handles the messy reality of food labels: numeric dates in any region order,
-// written-out months, month/year-only "best before", keywords on a separate
-// line from the date, and multiple dates (manufacture + expiry).
-
-const MONTHS = {
+﻿const MONTHS = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
   jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
 };
 
-// Keyword groups (case-insensitive). Japanese included (Kawaii/JP-first).
 const EXP_WORDS = /(exp(?:iry|ires|iration)?|\bbbd?\b|\bbbe\b|best\s*before(?:\s*end)?|use\s*by|sell\s*by|consume\s*by|valid\s*(?:until|to)|\bed\b|expir)|賞味期限|消費期限/i;
 const MFG_WORDS = /(mfg|mfd|\bmd\b|\bpd\b|prod(?:uced)?|packed|\bpkd\b|manufactured?|made(?:\s*on)?)|製造|加工/i;
-// Lines that look like expiry/lot phrases without a digit (German, French, Dutch, etc.)
-// — used to prevent label lines from being mistaken for a product name.
-const NAME_STOP = /(mindestens\s*haltbar(\s*bis)?|haltbar\s*bis|zu\s*verbrauchen\s*bis|best\s*before(\s*end)?|use\s*by|sell\s*by|consume\s*by|exp(?:iry|ires|iration)?|\bbbe?\b|\bbbd\b|\bed\b|\blot\b|\bl\d+\b|à\s*consommer|de\s*préférence\s*avant|verbruiken\s*voor|da\s*consumarsi|consumir\s*antes|賞味期限|消費期限|製造)/i;
+// Label phrases with no digits, so they are never taken for a product name.
+const NAME_STOP = /(\bmindestens\b|\bhaltbar\b|\bverbrauchen\b|\bbis\s*:?\s*$|zu\s*verbrauchen\s*bis|best\s*before(\s*end)?|use\s*by|sell\s*by|consume\s*by|exp(?:iry|ires|iration)?|\bbbe?\b|\bbbd\b|\bed\b|\blot\b|\bl\d+\b|à\s*consommer|de\s*préférence\s*avant|verbruiken\s*voor|da\s*consumarsi|consumir\s*antes|賞味期限|消費期限|製造)/i;
 
 function fullYear(y) {
   const n = Number(y);
-  return n >= 100 ? n : 2000 + n; // 2-digit year → 2000s
+  return n >= 100 ? n : 2000 + n;
 }
 function daysInMonth(y, m) {
   return new Date(y, m, 0).getDate();
@@ -32,33 +25,30 @@ function monthFrom(word) {
   return MONTHS[word.slice(0, 3).toLowerCase()];
 }
 
-// Resolve which of two small numbers is the month vs day. Returns [month, day].
 function monthDay(x, y, region) {
-  if (x > 12 && y <= 12) return [y, x]; // x can only be a day
-  if (y > 12 && x <= 12) return [x, y]; // y can only be a day
-  if (x > 12 && y > 12) return null;    // impossible
-  return region === "MDY" ? [x, y] : [y, x]; // both ≤12: region decides
+  if (x > 12 && y <= 12) return [y, x];
+  if (y > 12 && x <= 12) return [x, y];
+  if (x > 12 && y > 12) return null;
+  return region === "MDY" ? [x, y] : [y, x];
 }
 
-// Numeric d/m/y in any order, resolved by region + "a part >12 must be the day".
 function resolveNumeric(a, b, c, region) {
-  if (a.length === 4) {                          // YYYY ? ?
-    const md = monthDay(Number(b), Number(c), "MDY"); // YMD → month then day
+  if (a.length === 4) {
+    const md = monthDay(Number(b), Number(c), "MDY");
     return md ? mk(Number(a), md[0], md[1]) : null;
   }
-  if (c.length === 4) {                           // ? ? YYYY
+  if (c.length === 4) {
     const md = monthDay(Number(a), Number(b), region);
     return md ? mk(fullYear(c), md[0], md[1]) : null;
   }
-  if (region === "YMD") {                          // YY MM DD
+  if (region === "YMD") {
     const md = monthDay(Number(b), Number(c), "MDY");
     return md ? mk(fullYear(a), md[0], md[1]) : null;
   }
-  const md = monthDay(Number(a), Number(b), region); // year is last
+  const md = monthDay(Number(a), Number(b), region);
   return md ? mk(fullYear(c), md[0], md[1]) : null;
 }
 
-// Extract every date in a line. my=true marks month/year-only (→ end of month).
 function extractDates(line, region) {
   const out = [];
   let m;
@@ -67,16 +57,12 @@ function extractDates(line, region) {
   const reNum = /(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/g;
   while ((m = reNum.exec(line))) push(resolveNumeric(m[1], m[2], m[3], region));
 
-  // Space-separated dates with no slashes, e.g. "ED 22 07 26" / "23 01 2026".
-  // The plausibility window later discards junk number runs (lot codes, weights).
   const reSpaced = /(?<!\d)(\d{1,4})\s+(\d{1,2})\s+(\d{2,4})(?!\d)/g;
   while ((m = reSpaced.exec(line))) push(resolveNumeric(m[1], m[2], m[3], region));
 
-  // Year-first with loose separators (handles OCR turning "/" into a space, e.g.
-  // "2024/01 28"). Year leads, so it's unambiguous and safe.
   const reYMD = /(\d{4})[\/.\-\s]+(\d{1,2})[\/.\-\s]+(\d{1,2})(?!\d)/g;
   while ((m = reYMD.exec(line))) {
-    const md = monthDay(Number(m[2]), Number(m[3]), "MDY"); // YMD → month then day
+    const md = monthDay(Number(m[2]), Number(m[3]), "MDY");
     if (md) push(mk(Number(m[1]), md[0], md[1]));
   }
 
@@ -95,7 +81,6 @@ function extractDates(line, region) {
   const reMonYr = /([A-Za-z]{3,9})\.?[\s,.\-]*(\d{2,4})/g;
   while ((m = reMonYr.exec(line))) { const mo = monthFrom(m[1]); if (mo) { const y = fullYear(m[2]); push(mk(y, mo, daysInMonth(y, mo)), true); } }
 
-  // Drop month/year-only dates when an exact date in the same month already exists.
   const exact = out.filter((o) => !o.my);
   const kept = out.filter((o) => !o.my || !exact.some((e) => e.t.getFullYear() === o.t.getFullYear() && e.t.getMonth() === o.t.getMonth()));
   const seen = new Set();
@@ -113,7 +98,7 @@ function parseLabel(rawText, region = "DMY") {
   const plausible = (d) => d && d.getTime() >= MIN && d.getTime() <= MAX;
 
   const all = [];
-  let carryKw = null; // a keyword on a line with no date applies to the next line
+  let carryKw = null; // A keyword on a line with no date applies to the next line.
   for (const line of lines) {
     const lineKw = EXP_WORDS.test(line) ? "exp" : MFG_WORDS.test(line) ? "mfg" : null;
     const ds = extractDates(line, region).filter((o) => plausible(o.t));
@@ -123,26 +108,23 @@ function parseLabel(rawText, region = "DMY") {
     for (const o of ds) all.push({ t: o.t, kw, my: o.my });
   }
 
-  // Globally drop month/year-only guesses when a full date in the same month
-  // exists (e.g. "2024/01/28" beats a stray "2024/01" → Jan 31).
   const exact = all.filter((o) => !o.my);
   const usable = all.filter(
     (o) => !o.my || !exact.some((e) => e.t.getFullYear() === o.t.getFullYear() && e.t.getMonth() === o.t.getMonth())
   );
 
-  // unique by time (an exp-labelled hit wins over an unlabelled duplicate)
   const map = new Map();
   for (const o of usable) { const k = o.t.getTime(); if (!map.has(k) || o.kw === "exp") map.set(k, o); }
-  const cands = [...map.values()].sort((a, b) => b.t - a.t); // future-most first
+  const cands = [...map.values()].sort((a, b) => b.t - a.t);
 
   let exp = null, mfg = null;
   const expHits = cands.filter((c) => c.kw === "exp");
   const mfgHits = cands.filter((c) => c.kw === "mfg");
-  if (expHits.length) exp = expHits[0].t;                       // latest labelled expiry
-  if (mfgHits.length) mfg = mfgHits[mfgHits.length - 1].t;      // earliest labelled make date
+  if (expHits.length) exp = expHits[0].t;
+  if (mfgHits.length) mfg = mfgHits[mfgHits.length - 1].t;
   if (!exp) {
     const pool = cands.filter((c) => !(mfg && c.t.getTime() === mfg.getTime()));
-    if (pool.length) exp = pool[0].t;                          // future-most remaining
+    if (pool.length) exp = pool[0].t;
   }
   if (!mfg && cands.length > 1) {
     const earliest = cands[cands.length - 1].t;
@@ -162,4 +144,11 @@ function parseLabel(rawText, region = "DMY") {
   return { exp, mfg, candidates: cands.map((c) => c.t), guessName };
 }
 
-module.exports = { parseLabel, resolveNumeric, mk };
+// True for a line that is part of a date label rather than a product name,
+// e.g. "mindestens", "BEST BEFORE", "LOT 4471".
+function isLabelPhrase(line) {
+  const l = String(line || "");
+  return EXP_WORDS.test(l) || MFG_WORDS.test(l) || NAME_STOP.test(l);
+}
+
+module.exports = { parseLabel, resolveNumeric, mk, isLabelPhrase };

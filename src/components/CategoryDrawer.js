@@ -1,24 +1,24 @@
-// Slide-up drawer for one category: lists its items; tap an item for full detail.
 import React from "react";
 import { View, Text, ScrollView, StyleSheet, Dimensions } from "react-native";
-import { RADIUS, SPACE, catColors } from "../theme";
+import { SPACE, HAND, catColors } from "../theme";
 
-const LIST_MAX = Math.round(Dimensions.get("window").height * 0.5); // grow, then scroll
+const LIST_MAX = Math.round(Dimensions.get("window").height * 0.5);
 import { CategoryIcon } from "./FoodIcons";
-import { ItemRow } from "./Fridge";
+import { ItemRow, Magnet } from "./Fridge";
 import SwipeSheet from "./SwipeSheet";
 import SwipeRow from "./SwipeRow";
 
 export default function CategoryDrawer({ category, items = [], palette, onClose, onOpenItem, onRemove }) {
   const header = category ? (
     <View style={s.head}>
-      <View style={[s.iconChip, { backgroundColor: catColors(category, palette.mode).tint }]}>
-        <CategoryIcon catKey={category.icon || category.key} size={30} />
+      <View style={s.iconChip}>
+        <CategoryIcon catKey={category.icon || category.key} size={34} />
+        <View style={s.magnetPin}><Magnet color={catColors(category, palette.mode).accent} size={14} /></View>
       </View>
       <View>
         <Text style={[s.title, { color: palette.text }]}>{category.label}</Text>
         <Text style={[s.sub, { color: palette.textSoft }]}>
-          {items.length} item{items.length === 1 ? "" : "s"} inside · swipe down to close
+          {items.length === 0 ? "Empty" : `${items.length} item${items.length === 1 ? "" : "s"}. Swipe one left to remove it.`}
         </Text>
       </View>
     </View>
@@ -29,7 +29,7 @@ export default function CategoryDrawer({ category, items = [], palette, onClose,
       {category && (
         <ScrollView style={{ maxHeight: LIST_MAX }} contentContainerStyle={{ gap: SPACE.sm }} showsVerticalScrollIndicator={true}>
           {items.length === 0 ? (
-            <Text style={[s.empty, { color: palette.textSoft }]}>This drawer is empty. Scan a product to add one.</Text>
+            <Text style={[s.empty, { color: palette.textSoft }]}>Nothing here yet. Scan a product to add one.</Text>
           ) : (
             items.map((it) => (
               <SwipeRow key={it.id} palette={palette} onRemove={() => onRemove?.(it.id)}>
@@ -45,8 +45,9 @@ export default function CategoryDrawer({ category, items = [], palette, onClose,
 
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: SPACE.md, marginBottom: SPACE.md },
-  iconChip: { width: 52, height: 52, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 24, fontWeight: "900", lineHeight: 26 },
-  sub: { fontSize: 13, fontWeight: "700", marginTop: 2 },
-  empty: { fontSize: 14, paddingVertical: SPACE.xl, textAlign: "center", fontStyle: "italic" },
+  iconChip: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
+  magnetPin: { position: "absolute", top: -4, right: -2 },
+  title: { fontFamily: HAND, fontSize: 30, lineHeight: 36 },
+  sub: { fontSize: 13, fontWeight: "600" },
+  empty: { fontSize: 14, paddingVertical: SPACE.xl, textAlign: "center" },
 });

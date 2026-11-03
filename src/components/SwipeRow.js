@@ -1,5 +1,3 @@
-// iOS-style swipe-left row: drag reveals a themed-red "Remove"; swipe far to
-// delete, or tap Remove. Vertical scrolling still works (only claims left drags).
 import React, { useRef } from "react";
 import { Animated, PanResponder, Pressable, Text, View, StyleSheet, Dimensions } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -39,10 +37,10 @@ export default function SwipeRow({ children, onRemove, palette }) {
   ).current;
 
   return (
-    <View style={[st.wrap, { backgroundColor: bad.bg }]}>
+    <View style={[st.wrap, { backgroundColor: bad.fg }]}>
       <View style={st.behind}>
         <Pressable onPress={remove} style={st.btn}>
-          <Text style={[st.txt, { color: bad.fg }]}>Remove</Text>
+          <Text style={[st.txt, { color: palette.surface }]}>Remove</Text>
         </Pressable>
       </View>
       <Animated.View {...pan.panHandlers} style={{ transform: [{ translateX: tx }] }}>

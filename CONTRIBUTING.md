@@ -31,8 +31,8 @@ catch timezone bugs.
 
 - Everything runs on-device. No new network calls, accounts, or analytics.
 - Photos of items stay local; don't add anything that uploads them anywhere.
-- Keep the folder icons and tone consistent with the existing set if you're
-  adding UI, this one is deliberately drawn and cute rather than generic.
+- New UI belongs on the fridge door: paper notes, one magnet colour per
+  folder, names in the marker hand, and red only for what to use first.
 
 ## Reporting a bug
 

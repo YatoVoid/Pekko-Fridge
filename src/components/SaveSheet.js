@@ -1,17 +1,15 @@
-// Post-scan sheet: shows parsed dates, photos, name + category, saves to fridge.
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Image, Dimensions, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { RADIUS, SPACE, resolveCat, catColors } from "../theme";
+import { RADIUS, SPACE, HAND, resolveCat, catColors } from "../theme";
 import { useApp, DEFAULT_CATEGORIES } from "../store";
 import { PrimaryButton } from "./ui";
-import { CategoryIcon } from "./FoodIcons";
+import { Magnet } from "./Fridge";
 import { formatDate as fmt } from "../lib/expiry";
 import { recognizeBest } from "../lib/ocr";
 import { enhanceForOcr } from "../lib/enhance";
-import { parseLabel } from "../lib/dateParser";
+import { parseLabel, isLabelPhrase } from "../lib/dateParser";
 
-// Which script family a character belongs to (or null if it isn't a letter).
 function scriptFamily(ch) {
   const c = ch.codePointAt(0);
   if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || (c >= 0xc0 && c <= 0x24f)) return "latin";
@@ -23,9 +21,7 @@ function scriptFamily(ch) {
   return /\p{L}/u.test(ch) ? "other" : null;
 }
 
-// Reject obvious OCR garbage (e.g. Cyrillic read by a Latin/CJK model): too few
-// letters, too many symbols, 3+ scripts, or a stray character from another script.
-// Better to leave the name empty for manual entry than to fill nonsense.
+// Better to leave the name empty than fill it with OCR garbage.
 function looksClean(name) {
   const fam = {};
   let letters = 0;
@@ -42,16 +38,12 @@ function looksClean(name) {
   return families.every((f) => fam[f] > 2 || fam[f] >= letters * 0.25);
 }
 
-// First letter capital, the rest lower case (OCR often yells in ALL CAPS).
-// A no-op for scripts without case (Japanese, Chinese, etc.).
 function sentenceCase(s) {
   const lower = s.toLowerCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-// Pick a product name from an OCR result. The product name is usually the
-// biggest text on the pack, so prefer the tallest text line (its bounding box);
-// fall back to the Latin brand guess, then the first line.
+// The product name is usually the biggest text on the pack.
 function pickName(result) {
   let best = "";
   let bestH = 0;
@@ -59,7 +51,7 @@ function pickName(result) {
     for (const line of b.lines || []) {
       const txt = (line.text || "").trim();
       const h = line.frame?.height || 0;
-      if (txt && txt.length <= 30 && /\p{L}/u.test(txt) && !/^\d/.test(txt) && h > bestH) {
+      if (txt && txt.length <= 30 && /\p{L}/u.test(txt) && !/^\d/.test(txt) && !isLabelPhrase(txt) && h > bestH) {
         bestH = h;
         best = txt;
       }
@@ -76,8 +68,7 @@ import DateField from "./DateField";
 
 const SHEET_MAX_H = Math.round(Dimensions.get("window").height * 0.66);
 
-// Generate plausible alternative dates by toggling a single 6↔8 digit in the
-// day / month / year — the digit pair dot-matrix OCR most often confuses.
+// Dot-matrix OCR mixes up 6 and 8 more than any other pair.
 function swap68(date) {
   if (!date) return [];
   const dt = new Date(date);
@@ -116,15 +107,15 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
   const [name, setName] = useState("");
   const [cat, setCat] = useState("other");
   const [photos, setPhotos] = useState([]);
-  const [exp, setExp] = useState(null); // chosen expiry (editable via candidate chips)
+  const [exp, setExp] = useState(null);
   const scrollRef = useRef(null);
   const nameRef = useRef(null);
   const nameValRef = useRef("");
-  nameValRef.current = name; // live mirror so addPhoto reads the current name after its awaits
+  nameValRef.current = name;
 
   useEffect(() => {
     if (visible) {
-      setName(""); // first photo is the date label — don't seed the name from it
+      setName(""); // The first photo is the date label, not the product.
       setCat("other");
       setPhotos(result?.photo ? [result.photo] : []);
       setExp(result?.exp || null);
@@ -135,18 +126,14 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
     const uri = await (fromLibrary ? pickFromLibrary() : takePhoto());
     if (!uri) return;
     setPhotos((p) => [...p, uri]);
-    // A photo added here is the product shot — read a name off it (any language),
-    // but never overwrite anything the user has already typed.
     if (nameValRef.current.trim()) return;
-    const enhanced = await enhanceForOcr(uri); // grayscale + contrast for readability
-    const result = await recognizeBest(enhanced); // null in Expo Go / on failure → no-op
+    const enhanced = await enhanceForOcr(uri);
+    const result = await recognizeBest(enhanced);
     if (!result?.text) return;
     const picked = pickName(result).slice(0, 40);
     if (picked && looksClean(picked) && !nameValRef.current.trim()) setName(sentenceCase(picked));
   };
 
-  // Correction chips: other dates spotted on the label, plus 6↔8 variants of the
-  // chosen date (dot-matrix OCR often confuses 6 and 8).
   const candidates = React.useMemo(() => {
     const out = new Map();
     const add = (d) => {
@@ -165,7 +152,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
       onClose={onClose}
       palette={palette}
       scrollable
-      header={<Text style={[s.title, { color: palette.text }]}>Got it</Text>}
+      header={<Text style={[s.title, { color: palette.text }]}>Add to the fridge</Text>}
     >
       <ScrollView
         ref={scrollRef}
@@ -182,10 +169,10 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
 
       {candidates.length > 0 && (
         <>
-          <Text style={[s.field, { color: palette.textSoft }]}>Wrong date? Tap the right one</Text>
+          <Text style={[s.field, { color: palette.textSoft }]}>Wrong date? Tap the right one.</Text>
           <View style={s.cands}>
             {candidates.map((d, i) => (
-              <Pressable key={i} onPress={() => setExp(d)} style={[s.cand, { backgroundColor: palette.surfaceAlt, borderColor: palette.line }]}>
+              <Pressable key={i} onPress={() => setExp(d)} style={[s.cand, { borderColor: palette.text }]} accessibilityRole="button">
                 <Text style={[s.candText, { color: palette.text }]}>{fmt(d, region)}</Text>
               </Pressable>
             ))}
@@ -198,17 +185,23 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
         {photos.map((uri, i) => (
           <View key={i} style={s.photoWrap}>
             <Image source={{ uri }} style={s.photo} />
-            <Pressable onPress={() => setPhotos((p) => p.filter((_, j) => j !== i))} style={[s.del, { backgroundColor: palette.surface }]}>
+            <Pressable
+              onPress={() => setPhotos((p) => p.filter((_, j) => j !== i))}
+              style={[s.del, { backgroundColor: palette.surface, borderColor: palette.text }]}
+              accessibilityRole="button"
+              accessibilityLabel="Remove photo"
+              hitSlop={10}
+            >
               <Text style={[s.delX, { color: palette.text }]}>×</Text>
             </Pressable>
           </View>
         ))}
         <Pressable onPress={() => addPhoto(false)} onLongPress={() => addPhoto(true)} style={[s.addTile, { borderColor: palette.line }]}>
-          <Text style={[s.addPlus, { color: palette.textSoft }]}>＋</Text>
+          <Text style={[s.addPlus, { color: palette.textSoft }]}>+</Text>
           <Text style={[s.addLabel, { color: palette.textSoft }]}>Add</Text>
         </Pressable>
       </ScrollView>
-      <Text style={[s.hint, { color: palette.textSoft }]}>Tap to take a photo · hold to pick from library</Text>
+      <Text style={[s.hint, { color: palette.textSoft }]}>Tap to take a photo. Hold to pick one from your library.</Text>
 
       <Text style={[s.field, { color: palette.textSoft }]}>Name</Text>
       <TextInput
@@ -219,7 +212,8 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
         placeholderTextColor={palette.textSoft}
         returnKeyType="done"
         onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60)}
-        style={[s.input, { color: palette.text, backgroundColor: palette.surfaceAlt, borderColor: palette.line }]}
+        style={[s.input, { color: palette.text, borderColor: palette.text }]}
+        accessibilityLabel="Name"
       />
 
       <Text style={[s.field, { color: palette.textSoft }]}>Folder</Text>
@@ -232,10 +226,12 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
             <Pressable
               key={c.key}
               onPress={() => setCat(c.key)}
-              style={[s.cat, { backgroundColor: on ? cc.tint : palette.surfaceAlt, borderColor: on ? palette.accent : "transparent" }]}
+              style={[s.cat, { backgroundColor: on ? palette.text : "transparent", borderColor: on ? palette.text : palette.line }]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
             >
-              <CategoryIcon catKey={rc.icon || c.key} size={18} />
-              <Text style={[s.catLabel, { color: on ? cc.ink : palette.text }]}>{rc.label}</Text>
+              <Magnet color={cc.accent} size={12} />
+              <Text style={[s.catLabel, { color: on ? palette.surface : palette.text }]}>{rc.label}</Text>
             </Pressable>
           );
         })}
@@ -244,7 +240,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
       <View style={{ height: SPACE.lg }} />
       <View>
         <PrimaryButton
-          label="Save to Fridge"
+          label="Put it in the fridge"
           palette={palette}
           disabled={!name.trim()}
           onPress={() => onSave({ name: name.trim(), category: cat, exp, mfg: result?.mfg || null, photos })}
@@ -259,7 +255,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
           />
         )}
         <Text style={[s.saveHint, { color: palette.textSoft }]}>
-          {name.trim() ? " " : "Give it a name to save it"}
+          {name.trim() ? " " : "Give it a name first."}
         </Text>
       </View>
       </ScrollView>
@@ -268,7 +264,7 @@ export default function SaveSheet({ visible, result, palette, region, onSave, on
 }
 
 const s = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: "900" },
+  title: { fontSize: 22, fontWeight: "800" },
   saveHint: { fontSize: 12.5, fontWeight: "600", textAlign: "center", marginTop: 8, minHeight: 16 },
   dates: { borderRadius: RADIUS.md, padding: SPACE.md, gap: 6, marginBottom: SPACE.md },
   dateRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
@@ -277,20 +273,20 @@ const s = StyleSheet.create({
   dateSmall: { fontSize: 15, fontWeight: "600" },
   madeNote: { fontSize: 13, fontWeight: "600", marginTop: 6 },
   cands: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm, marginBottom: SPACE.sm, marginTop: 6 },
-  cand: { borderWidth: 1, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 9 },
+  cand: { borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 10 },
   candText: { fontSize: 14, fontWeight: "700" },
-  field: { fontSize: 12, fontWeight: "800", letterSpacing: 1, marginBottom: 6, marginTop: 4 },
+  field: { fontSize: 13, fontWeight: "700", marginBottom: 6, marginTop: 8 },
   strip: { gap: SPACE.sm, paddingVertical: 2 },
   photoWrap: { position: "relative" },
   photo: { width: 76, height: 76, borderRadius: RADIUS.md },
-  del: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 3 },
+  del: { position: "absolute", top: -6, right: -6, width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   delX: { fontSize: 16, fontWeight: "800", lineHeight: 18 },
   addTile: { width: 76, height: 76, borderRadius: RADIUS.md, borderWidth: 1.5, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   addPlus: { fontSize: 22, fontWeight: "700" },
   addLabel: { fontSize: 11, fontWeight: "700" },
   hint: { fontSize: 11.5, marginTop: 6, marginBottom: SPACE.sm },
-  input: { borderRadius: RADIUS.md, borderWidth: 1, paddingHorizontal: SPACE.md, paddingVertical: 13, fontSize: 16, marginBottom: SPACE.md },
+  input: { borderRadius: RADIUS.md, borderWidth: 1.5, paddingHorizontal: SPACE.md, paddingVertical: 10, fontFamily: HAND, fontSize: 22, marginBottom: SPACE.md },
   cats: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
-  cat: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 2, borderRadius: RADIUS.pill, paddingHorizontal: 13, paddingVertical: 9 },
+  cat: { flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 10 },
   catLabel: { fontSize: 13.5, fontWeight: "700" },
 });

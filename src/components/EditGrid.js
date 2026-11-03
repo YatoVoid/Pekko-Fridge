@@ -1,13 +1,9 @@
-// Fridge "edit mode" — a uniform 2-column grid of draggable, wiggling category
-// tiles (the iOS home-screen-edit rendering of settings.categories). Reorder by
-// drag, tap a tile to rename inline, tap the corner badge to hide (built-ins) or
-// delete (custom folders), tap the dashed "+" tile to add. Data is committed to
-// the store on every change, so it is always persisted — see FridgeScreen.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, Animated, PanResponder, Keyboard, Dimensions, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { resolveCat, catColors, RADIUS, SPACE } from "../theme";
+import { resolveCat, catColors, RADIUS, SPACE, HAND } from "../theme";
 import { CategoryIcon } from "./FoodIcons";
+import { Magnet } from "./Fridge";
 import { PlusIcon, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
 
 const GAP = 12;
@@ -20,7 +16,7 @@ export default function EditGrid({
   onStartRename, onCommitRename, onReorder, onBadge, onAdd,
 }) {
   const tileW = (width - GAP) / COLS;
-  const count = cats.length + (canAdd ? 1 : 0); // +1 for the "add" tile
+  const count = cats.length + (canAdd ? 1 : 0);
   const rows = Math.max(1, Math.ceil(count / COLS));
   const tileH = clamp(Math.floor((height - (rows - 1) * GAP) / rows), 62, 92);
 
@@ -29,7 +25,6 @@ export default function EditGrid({
     [tileW, tileH],
   );
 
-  // Live order (keys) — diverges from committed `cats` only during a drag.
   const [order, setOrder] = useState(cats.map((c) => c.key));
   const orderRef = useRef(order);
   orderRef.current = order;
@@ -37,14 +32,12 @@ export default function EditGrid({
   const dragRef = useRef(null);
   dragRef.current = dragKey;
 
-  // Resync when the committed list changes (add / delete) and we're not dragging.
   useEffect(() => {
     if (!dragRef.current) setOrder(cats.map((c) => c.key));
   }, [cats]);
 
-  // Keyboard avoidance: the grid is absolutely positioned (no ScrollView), so when
-  // renaming a lower tile the keyboard covers it. Lift the whole grid just enough
-  // to clear the keyboard for the tile being renamed.
+  // The grid has no ScrollView, so lift it clear of the keyboard when a lower tile is
+  // being renamed.
   const rootRef = useRef(null);
   const lift = useRef(new Animated.Value(0)).current;
   const renamingKeyRef = useRef(renamingKey);
@@ -58,7 +51,7 @@ export default function EditGrid({
         rootRef.current?.measureInWindow((_x, y) => {
           const slot = orderRef.current.indexOf(renamingKeyRef.current);
           if (slot < 0) return;
-          const tileBottom = y + xy(slot).y + tileH; // measure is pre-transform (base) Y
+          const tileBottom = y + xy(slot).y + tileH;
           const overlap = tileBottom - kbTop + 20;
           Animated.timing(lift, { toValue: overlap > 0 ? -overlap : 0, duration: 220, useNativeDriver: true }).start();
         });
@@ -138,7 +131,6 @@ function Tile({
   const scale = useRef(new Animated.Value(1)).current;
   const wig = useRef(new Animated.Value(0)).current;
 
-  // Refs so the PanResponder (created once) always reads fresh values.
   const slotRef = useRef(slotIndex); slotRef.current = slotIndex;
   const rowsRef = useRef(rows); rowsRef.current = rows;
   const realRef = useRef(realCount); realRef.current = realCount;
@@ -156,15 +148,11 @@ function Tile({
   const onRenameRef = useRef(onStartRename); onRenameRef.current = onStartRename;
   const setDragRef = useRef(setDragKey); setDragRef.current = setDragKey;
 
-  // Slide to the assigned slot whenever order changes (unless this tile is dragging).
   useEffect(() => {
     if (draggingRef.current) return;
     Animated.spring(pos, { toValue: xy(slotIndex), useNativeDriver: true, friction: 8, tension: 80 }).start();
   }, [slotIndex, tileW, tileH]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wiggle loop — staggered per slot. Runs ONLY in edit mode (stops the instant
-  // edit mode ends, so tiles fade out static instead of flickering during the
-  // transition); also paused while dragging or renaming.
   useEffect(() => {
     if (!editing || isDragging || isRenaming) { wig.stopAnimation(() => wig.setValue(0)); return; }
     let loop;
@@ -189,7 +177,7 @@ function Tile({
         grant.current = { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY, t: Date.now() };
         start.current = xyRef.current(slotRef.current);
         draggingRef.current = true;
-        setDragRef.current(null); // will set on first real move to avoid flicker on taps
+        setDragRef.current(null);
         pos.stopAnimation();
       },
       onPanResponderMove: (e, g) => {
@@ -220,8 +208,7 @@ function Tile({
         Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 6 }).start();
         if (tap) {
           const { tileW: tw } = dimsRef.current;
-          // Generous invisible hit zone around the corner badge (bigger than the
-          // 28pt circle) so a slightly-off tap still lands on hide/delete.
+          // The hit zone is bigger than the badge so a slightly-off tap still lands.
           if (badgeRef.current && gr.x > tw - 58 && gr.y < 54) onBadgeRef.current(cat);
           else onRenameRef.current(cat);
           Animated.spring(pos, { toValue: xyRef.current(slotRef.current), useNativeDriver: true, friction: 8, tension: 80 }).start();
@@ -242,11 +229,9 @@ function Tile({
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Memoized so re-renders (e.g. toggling hide/show) don't hand the transform a
-  // fresh interpolation node, which would re-attach and visibly stutter the wiggle.
+  // A new interpolation node on each render makes the wiggle stutter.
   const rotate = useMemo(() => wig.interpolate({ inputRange: [-1, 1], outputRange: ["-1.7deg", "1.7deg"] }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const dimmed = cat.hidden ? 0.42 : 1;
-  // Scale contents to the tile height so short (cramped) tiles never overflow.
   const icWrap = Math.max(28, Math.min(42, tileH - 24));
   const glyph = Math.round(icWrap * 0.62);
   const lines = tileH < 74 ? 1 : 2;
@@ -259,10 +244,10 @@ function Tile({
         t.tile,
         {
           position: "absolute", width: tileW, height: tileH,
-          backgroundColor: palette.surface, borderColor: c.accent,
+          backgroundColor: c.tint, borderColor: palette.line,
           zIndex: isDragging ? 20 : 1,
-          // Resting tiles are flat (border gives definition); only the lifted tile
-          // casts a shadow — avoids dark shadow artifacts during the fade transition.
+          // Only the lifted tile casts a shadow. Resting shadows leave dark marks
+          // during the fade.
           shadowColor: "#000", shadowOpacity: isDragging ? 0.18 : 0,
           shadowRadius: isDragging ? 14 : 0, shadowOffset: { width: 0, height: isDragging ? 8 : 0 },
           elevation: isDragging ? 8 : 0,
@@ -271,7 +256,7 @@ function Tile({
       ]}
     >
       <View style={[t.inner, { opacity: dimmed }]}>
-        <View style={[t.iconWrap, { width: icWrap, height: icWrap, backgroundColor: c.tint }]}>
+        <View style={[t.iconWrap, { width: icWrap, height: icWrap }]}>
           <CategoryIcon catKey={cat.icon || cat.key} size={glyph} />
         </View>
         {isRenaming ? (
@@ -286,12 +271,14 @@ function Tile({
             returnKeyType="done"
             placeholder="Name"
             placeholderTextColor={palette.textSoft}
-            style={[t.input, { color: palette.text, borderColor: c.accent, backgroundColor: palette.surfaceAlt, fontSize }]}
+            style={[t.input, { color: palette.text, borderColor: palette.text, fontSize: fontSize + 4 }]}
           />
         ) : (
-          <Text numberOfLines={lines} style={[t.label, { color: palette.text, fontSize }]}>{cat.label}</Text>
+          <Text numberOfLines={lines} style={[t.label, { color: palette.text, fontSize: fontSize + 4, lineHeight: fontSize + 10 }]}>{cat.label}</Text>
         )}
       </View>
+
+      <View style={t.magnet} pointerEvents="none"><Magnet color={c.accent} size={14} /></View>
 
       {hasBadge && !isRenaming && (
         <View style={[t.badge, { backgroundColor: palette.surface, borderColor: palette.line }]} pointerEvents="none">
@@ -348,12 +335,13 @@ const t = StyleSheet.create({
   },
   inner: { flex: 1, flexDirection: "row", alignItems: "center", gap: SPACE.sm, overflow: "hidden" },
   iconWrap: { borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center" },
-  label: { flex: 1, fontWeight: "800", letterSpacing: 0.2 },
-  input: { flex: 1, borderWidth: 1.5, borderRadius: RADIUS.sm, paddingHorizontal: SPACE.sm, paddingVertical: 6, fontWeight: "800" },
+  label: { flex: 1, fontFamily: HAND },
+  input: { flex: 1, borderBottomWidth: 2, paddingHorizontal: 2, paddingVertical: 2, fontFamily: HAND },
+  magnet: { position: "absolute", top: -6, left: SPACE.md },
   badge: {
     position: "absolute", top: -8, right: -8, width: 28, height: 28, borderRadius: 14, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
   addTile: { borderStyle: "dashed", justifyContent: "center", gap: SPACE.xs },
-  addLabel: { fontSize: 14, fontWeight: "800" },
+  addLabel: { fontSize: 14, fontWeight: "700" },
 });
